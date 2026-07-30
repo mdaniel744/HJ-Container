@@ -1,0 +1,149 @@
+{
+  "name": "Order",
+  "type": "object",
+  "properties": {
+    "order_number": {
+      "type": "string"
+    },
+    "language": {
+      "type": "string",
+      "enum": [
+        "da",
+        "en"
+      ],
+      "default": "da"
+    },
+    "customer_type": {
+      "type": "string",
+      "enum": [
+        "private",
+        "business"
+      ],
+      "default": "private"
+    },
+    "full_name": {
+      "type": "string"
+    },
+    "company_name": {
+      "type": "string"
+    },
+    "cvr": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "billing_address": {
+      "type": "string"
+    },
+    "delivery_address": {
+      "type": "string"
+    },
+    "postcode": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "country": {
+      "type": "string",
+      "default": "Danmark"
+    },
+    "delivery_instructions": {
+      "type": "string"
+    },
+    "po_reference": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "unloading_method": {
+      "type": "string"
+    },
+    "site_access": {
+      "type": "string"
+    },
+    "ground_condition": {
+      "type": "string"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "sku": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "size": {
+            "type": "string"
+          },
+          "condition": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unit_price_incl_vat": {
+            "type": "number"
+          },
+          "product_slug": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "subtotal_excl_vat": {
+      "type": "number"
+    },
+    "vat_amount": {
+      "type": "number"
+    },
+    "delivery_cost": {
+      "type": "number"
+    },
+    "unloading_cost": {
+      "type": "number"
+    },
+    "total_incl_vat": {
+      "type": "number"
+    },
+    "payment_method": {
+      "type": "string",
+      "enum": [
+        "invoice",
+        "bank_transfer"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "new",
+        "awaiting_review",
+        "awaiting_payment",
+        "paid",
+        "delivery_planning",
+        "scheduled",
+        "completed",
+        "cancelled",
+        "refunded"
+      ],
+      "default": "new"
+    },
+    "newsletter_consent": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "order_number",
+    "email",
+    "items"
+  ]
+}
