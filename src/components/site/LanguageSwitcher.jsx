@@ -1,5 +1,5 @@
 import React from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "@/lib/next-router";
 import { useLang } from "@/lib/i18n";
 import { translatePath, useAltPath } from "@/lib/AltPath";
 

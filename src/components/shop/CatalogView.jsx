@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "@/lib/next-router";
 import { SlidersHorizontal, X, LayoutGrid, List } from "lucide-react";
 import ShopFilters from "./ShopFilters";
 import ProductGrid from "./ProductGrid";

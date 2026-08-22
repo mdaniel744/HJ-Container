@@ -4,18 +4,33 @@
     "paths": {
       "@/*": ["./src/*"]
     },
-    "jsx": "react-jsx",
+    "allowJs": true,
+    "checkJs": false,
+    "jsx": "preserve",
     "module": "esnext",
     "moduleResolution": "bundler",
     "lib": ["esnext", "dom"],
-    "target": "esnext",
-    "checkJs": true,
+    "target": "ES2017",
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "resolveJsonModule": true,
-    "types": []
+    "isolatedModules": true,
+    "incremental": true,
+    "noEmit": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
   },
-  "include": ["src/components/**/*.js", "src/pages/**/*.jsx", "src/Layout.jsx"],
-  "exclude": ["node_modules", "dist", "src/vite-plugins", "src/components/ui", "src/api", "src/lib"]
-} 
+  "include": [
+    "next-env.d.ts",
+    ".next/types/**/*.ts",
+    "app/**/*.js",
+    "app/**/*.jsx",
+    "src/**/*.js",
+    "src/**/*.jsx"
+  ],
+  "exclude": ["node_modules", ".next", "dist"]
+}

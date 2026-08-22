@@ -1,4 +1,4 @@
-import { useLocation } from "react-router-dom";
+import { useLocation } from "@/lib/next-router";
 
 export function useLang() {
   const { pathname } = useLocation();

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "@/lib/next-router";
 import { Truck, AlertTriangle, Check } from "lucide-react";
 import { L, formatDKK } from "@/lib/i18n";
 import { path } from "@/lib/routes";

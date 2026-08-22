@@ -1,11 +1,10 @@
 import React from "react";
-import { Outlet } from "react-router-dom";
 import Header from "./Header";
 import Footer from "./Footer";
 import CookieConsent from "./CookieConsent";
 import { L, useLang } from "@/lib/i18n";
 
-export default function SiteLayout() {
+export default function SiteLayout({ children }) {
   const lang = useLang();
   return (
     <div className="min-h-screen flex flex-col bg-white text-slate-900">
@@ -14,7 +13,7 @@ export default function SiteLayout() {
       </a>
       <Header />
       <main id="main" className="flex-1">
-        <Outlet />
+        {children}
       </main>
       <Footer />
       <CookieConsent />

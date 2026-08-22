@@ -1,5 +1,5 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link } from "@/lib/next-router";
 import { L } from "@/lib/i18n";
 import { COLLECTIONS, path } from "@/lib/routes";
 

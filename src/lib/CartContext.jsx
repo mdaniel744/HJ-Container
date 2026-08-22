@@ -5,15 +5,24 @@ const CartContext = createContext(null);
 const KEY = "hjc_cart_v1";
 
 export function CartProvider({ children }) {
-  const [items, setItems] = useState(() => {
-    const raw = localStorage.getItem(KEY);
-    return raw ? JSON.parse(raw) : [];
-  });
+  const [items, setItems] = useState([]);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(KEY);
+      setItems(raw ? JSON.parse(raw) : []);
+    } catch {
+      setItems([]);
+    }
+    setIsLoaded(true);
+  }, []);
+
   const [announcement, setAnnouncement] = useState("");
 
   useEffect(() => {
-    localStorage.setItem(KEY, JSON.stringify(items));
-  }, [items]);
+    if (isLoaded) localStorage.setItem(KEY, JSON.stringify(items));
+  }, [items, isLoaded]);
 
   const addItem = (item, message) => {
     setItems((prev) => {

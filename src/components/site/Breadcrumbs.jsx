@@ -1,5 +1,5 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link } from "@/lib/next-router";
 import { ChevronRight } from "lucide-react";
 
 export default function Breadcrumbs({ items }) {

@@ -1,5 +1,5 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link } from "@/lib/next-router";
 import { Image } from "@/components/ui/image";
 import { AVAILABILITY_LABEL, CONDITION_LABEL, L, formatDKK, pick } from "@/lib/i18n";
 import { path } from "@/lib/routes";

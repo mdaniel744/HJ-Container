@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "@/lib/next-router";
 import { ChevronDown } from "lucide-react";
 
 /** Hover-intent dropdown that also works on tap. */

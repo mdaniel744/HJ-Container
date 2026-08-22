@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "@/lib/next-router";
 import { Menu, Search, ShoppingCart, X } from "lucide-react";
 import { useLang, L } from "@/lib/i18n";
 import { path, COLLECTIONS } from "@/lib/routes";

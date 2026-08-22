@@ -1,5 +1,8 @@
 import { useEffect } from "react";
 
+const currentOrigin = () =>
+  typeof window === "undefined" ? "" : window.location.origin;
+
 function upsert(selector, create) {
   let el = document.head.querySelector(selector);
   if (!el) {
@@ -67,7 +70,7 @@ export function organizationJsonLd() {
     "@context": "https://schema.org",
     "@type": "Organization",
     name: "HJ Container ApS",
-    url: window.location.origin,
+    url: currentOrigin(),
     email: "contact@hjcontainer.com",
     identifier: "DKCVR.16217670",
     vatID: null,
@@ -89,7 +92,7 @@ export function breadcrumbJsonLd(items) {
       "@type": "ListItem",
       position: i + 1,
       name: it.name,
-      item: window.location.origin + it.path,
+      item: currentOrigin() + it.path,
     })),
   };
 }
