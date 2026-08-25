@@ -1,7 +1,5 @@
 import React from "react";
 import { L } from "@/lib/i18n";
-import { CATEGORY_LABEL } from "@/lib/routes";
-import { CONDITION_LABEL } from "@/lib/i18n";
 
 function Group({ title, children }) {
   return (
@@ -12,35 +10,47 @@ function Group({ title, children }) {
   );
 }
 
-export default function ShopFilters({ lang, filters, setFilters, colors, maxPrice }) {
-  const toggle = (key, value) => {
-    const list = filters[key] || [];
-    setFilters({ ...filters, [key]: list.includes(value) ? list.filter((v) => v !== value) : [...list, value] });
+// Facets come from the attributes/attribute_values definition tables
+// (useAttributeVocabulary) — the full set the store defines, with
+// translated labels, not just what happens to appear on loaded products.
+export default function ShopFilters({ lang, filters, setFilters, categories, facetDefinitions, maxPrice }) {
+  const toggleCategory = (id) => {
+    const list = filters.category || [];
+    setFilters({ ...filters, category: list.includes(id) ? list.filter((v) => v !== id) : [...list, id] });
   };
 
-  const check = (key, value, label) => (
-    <label key={value} className="flex items-center gap-2.5 py-1.5 text-sm text-slate-700 cursor-pointer">
-      <input type="checkbox" className="w-4 h-4" checked={(filters[key] || []).includes(value)} onChange={() => toggle(key, value)} />
-      {label}
-    </label>
-  );
+  const toggleAttr = (key, rawValue) => {
+    const list = filters.attrs[key] || [];
+    setFilters({
+      ...filters,
+      attrs: { ...filters.attrs, [key]: list.includes(rawValue) ? list.filter((v) => v !== rawValue) : [...list, rawValue] },
+    });
+  };
 
   return (
     <div>
-      <Group title={L(lang, "Containertype", "Container type")}>
-        {["standard", "high_cube", "open_side"].map((c) => check("category", c, CATEGORY_LABEL[c][lang]))}
-      </Group>
-      <Group title={L(lang, "Størrelse", "Size")}>
-        {["10ft", "20ft", "40ft"].map((s) => check("size", s, s))}
-      </Group>
-      <Group title={L(lang, "Stand", "Condition")}>
-        {["new", "used"].map((c) => check("condition", c, CONDITION_LABEL[c][lang]))}
-      </Group>
-      {colors.length > 0 && (
-        <Group title={L(lang, "Farve", "Colour")}>
-          {colors.map((c) => check("color", c, c))}
+      {categories && categories.length > 0 && (
+        <Group title={L(lang, "Kategori", "Category")}>
+          {categories.map((c) => (
+            <label key={c.id} className="flex items-center gap-2.5 py-1.5 text-sm text-slate-700 cursor-pointer">
+              <input type="checkbox" className="w-4 h-4" checked={(filters.category || []).includes(c.id)} onChange={() => toggleCategory(c.id)} />
+              {c.name}
+            </label>
+          ))}
         </Group>
       )}
+
+      {facetDefinitions.map((facet) => (
+        <Group key={facet.key} title={facet.label}>
+          {facet.values.map((v) => (
+            <label key={v.raw} className="flex items-center gap-2.5 py-1.5 text-sm text-slate-700 cursor-pointer">
+              <input type="checkbox" className="w-4 h-4" checked={(filters.attrs[facet.key] || []).includes(v.raw)} onChange={() => toggleAttr(facet.key, v.raw)} />
+              {v.label}
+            </label>
+          ))}
+        </Group>
+      ))}
+
       <Group title={L(lang, "Maksimal pris (inkl. moms)", "Maximum price (incl. VAT)")}>
         <input
           type="range" min="0" max={maxPrice} step="1000"
@@ -52,11 +62,6 @@ export default function ShopFilters({ lang, filters, setFilters, colors, maxPric
         <p className="hjc-mono text-[11px] text-slate-500 mt-1">
           {(filters.maxPrice ?? maxPrice).toLocaleString(lang === "en" ? "en-DK" : "da-DK")} DKK
         </p>
-      </Group>
-      <Group title={L(lang, "Tilgængelighed", "Availability")}>
-        {check("availability", "in_stock", L(lang, "På lager", "In stock"))}
-        {check("flags", "direct", L(lang, "Kan bestilles direkte", "Direct order available"))}
-        {check("flags", "quote", L(lang, "Kræver tilbud", "Quote required"))}
       </Group>
     </div>
   );

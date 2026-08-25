@@ -14,7 +14,6 @@ export const ROUTES = {
   policy: { da: "/politik/:slug", en: "/en/policy/:slug" },
   guides: { da: "/viden", en: "/en/guides" },
   guide: { da: "/viden/:slug", en: "/en/guides/:slug" },
-  admin: { da: "/admin", en: "/admin" },
 };
 
 export function path(key, lang = "da", slug) {
@@ -23,24 +22,18 @@ export function path(key, lang = "da", slug) {
   return p;
 }
 
-// Collections: canonical key -> localized slug + labels
-export const COLLECTIONS = [
-  { key: "standard", kind: "type", slug: { da: "standardcontainere", en: "standard-containers" }, label: { da: "Standardcontainere", en: "Standard Containers" } },
-  { key: "high_cube", kind: "type", slug: { da: "high-cube-containere", en: "high-cube-containers" }, label: { da: "High Cube-containere", en: "High Cube Containers" } },
-  { key: "open_side", kind: "type", slug: { da: "open-side-containere", en: "open-side-containers" }, label: { da: "Open Side-containere", en: "Open Side Containers" } },
-  { key: "10ft", kind: "size", slug: { da: "10-fods-containere", en: "10ft-containers" }, label: { da: "10 fods containere", en: "10ft Containers" } },
-  { key: "20ft", kind: "size", slug: { da: "20-fods-containere", en: "20ft-containers" }, label: { da: "20 fods containere", en: "20ft Containers" } },
-  { key: "40ft", kind: "size", slug: { da: "40-fods-containere", en: "40ft-containers" }, label: { da: "40 fods containere", en: "40ft Containers" } },
+// Static nav/label helper for the 3 container-type categories, used by
+// synchronous UI (header, footer, home cards) that shouldn't have to fetch
+// live category data just to render a link label. The category *pages*
+// fetch live data via useCategory() (src/lib/useCatalog.js) — this is kept
+// in sync with the local sample categories in src/data/products.js.
+export const CONTAINER_TYPES = [
+  { key: "standard", slug: { da: "standardcontainere", en: "standard-containers" }, label: { da: "Standardcontainere", en: "Standard Containers" } },
+  { key: "high_cube", slug: { da: "high-cube-containere", en: "high-cube-containers" }, label: { da: "High Cube-containere", en: "High Cube Containers" } },
+  { key: "open_side", slug: { da: "open-side-containere", en: "open-side-containers" }, label: { da: "Open Side-containere", en: "Open Side Containers" } },
 ];
 
-export function collectionBySlug(slug) {
-  return COLLECTIONS.find((c) => c.slug.da === slug || c.slug.en === slug);
-}
-
-export const CATEGORY_LABEL = {
-  standard: { da: "Standardcontainer", en: "Standard Container" },
-  high_cube: { da: "High Cube-container", en: "High Cube Container" },
-  open_side: { da: "Open Side-container", en: "Open Side Container" },
-};
-
+// "Size" is a product attribute in the shared schema, not a category, so
+// there's no dedicated size category page — these are shop filter shortcuts.
+export const SIZES = ["10ft", "20ft", "40ft"];
 export const SIZE_ORDER = { "10ft": 1, "20ft": 2, "40ft": 3 };

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { COLLECTIONS, ROUTES } from "@/lib/routes";
+import { CONTAINER_TYPES, ROUTES } from "@/lib/routes";
 
 const AltPathContext = createContext({ alt: null, setAlt: () => {} });
 
@@ -32,10 +32,10 @@ export function translatePath(pathname, target) {
     if (r.da.includes(":slug")) continue;
     if (pathname === r[current]) return r[target];
   }
-  // Collections
+  // Container-type categories
   const segs = pathname.split("/").filter(Boolean);
   const last = segs[segs.length - 1];
-  const col = COLLECTIONS.find((c) => c.slug[current] === last);
+  const col = CONTAINER_TYPES.find((c) => c.slug[current] === last);
   if (col) return (target === "en" ? "/en/containers/" : "/containere/") + col.slug[target];
 
   return target === "en" ? "/en" : "/";

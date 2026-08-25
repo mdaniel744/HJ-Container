@@ -1,6 +1,4 @@
 import React from "react";
-import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
 import Hero from "@/components/home/Hero";
 import CategoryCards from "@/components/home/CategoryCards";
 import SizeCards from "@/components/home/SizeCards";
@@ -11,26 +9,23 @@ import DeliverySection from "@/components/home/DeliverySection";
 import FaqPreview from "@/components/home/FaqPreview";
 import FinalCta from "@/components/home/FinalCta";
 import { useLang, L, pick } from "@/lib/i18n";
-import { useCatalog } from "@/lib/useCatalog";
+import { useProducts, useCategories } from "@/lib/useCatalog";
 import { useSeo, organizationJsonLd } from "@/lib/seo";
-import { path } from "@/lib/routes";
+import { path, CONTAINER_TYPES } from "@/lib/routes";
+import { FAQS, POLICIES } from "@/data/content";
 
 export default function Home() {
   const lang = useLang();
   const origin = typeof window === "undefined" ? "" : window.location.origin;
-  const { products, variants } = useCatalog();
-  const { data: faqs = [] } = useQuery({
-    queryKey: ["faqs-home"],
-    queryFn: () => base44.entities.Faq.filter({ published: true, show_on_home: true }, "sort_order", 8),
-  });
-  const { data: policies = [] } = useQuery({
-    queryKey: ["policies"],
-    queryFn: () => base44.entities.PolicyPage.filter({ published: true }, "sort_order", 50),
-  });
+  const { products } = useProducts(lang);
+  const { categories } = useCategories(lang);
+  const faqs = FAQS.filter((f) => f.published && f.show_on_home);
+  const policies = POLICIES.filter((p) => p.published);
 
   const counts = {};
-  products.forEach((p) => {
-    counts[p.category] = (counts[p.category] || 0) + variants.filter((v) => v.product_key === p.key).length;
+  categories.forEach((cat) => {
+    const type = CONTAINER_TYPES.find((c) => c.slug.da === cat.slug || c.slug.en === cat.slug);
+    if (type) counts[type.key] = products.filter((p) => p.category_id === cat.id).length;
   });
 
   const deliveryPolicy = policies.find((p) => p.slug_da === "levering-og-fragt");
@@ -57,7 +52,7 @@ export default function Home() {
       <Hero lang={lang} />
       <CategoryCards lang={lang} counts={counts} />
       <SizeCards lang={lang} />
-      <FeaturedProducts lang={lang} products={products} variants={variants} />
+      <FeaturedProducts lang={lang} products={products} />
       <TrustPoints lang={lang} />
       <HowItWorks lang={lang} />
       <DeliverySection lang={lang} deliveryPolicySlug={deliveryPolicy ? pick(deliveryPolicy, "slug", lang) : null} />

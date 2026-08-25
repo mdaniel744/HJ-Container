@@ -32,8 +32,8 @@ dist-ssr
 
 .env
 .vite
-base44/.app.jsonc
 
 # Local agent tooling (not required by the application runtime)
 .agents/
+.claude/
 skills-lock.json

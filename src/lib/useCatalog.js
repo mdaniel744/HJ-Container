@@ -1,36 +1,67 @@
 import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
+import { STORE_ID } from "@/lib/supabase/client";
+import { getProducts as getSupabaseProducts, getProductBySlug as getSupabaseProductBySlug } from "@/lib/supabase/products";
+import { getCategories as getSupabaseCategories, getCategoryBySlug as getSupabaseCategoryBySlug } from "@/lib/supabase/categories";
+import { PRODUCTS, CATEGORIES } from "@/data/products";
+import { SETTINGS } from "@/data/content";
+import { localizeRow } from "@/lib/localize";
 
-export function useCatalog() {
-  const products = useQuery({
-    queryKey: ["products"],
-    queryFn: () => base44.entities.Product.filter({ status: "published" }, "sort_order", 200),
+const PRODUCT_FIELDS = ["name", "slug", "short_description", "description"];
+const CATEGORY_FIELDS = ["name", "slug", "description", "meta_title", "meta_description"];
+
+function localProducts(locale) {
+  return PRODUCTS.map((p) => localizeRow(p, locale, PRODUCT_FIELDS));
+}
+
+function localCategories(locale) {
+  return CATEGORIES.map((c) => localizeRow(c, locale, CATEGORY_FIELDS));
+}
+
+// Locale here is "da" | "en", matching this storefront's two routes — maps
+// 1:1 to Supabase's source locale ("da") vs. a translations-table overlay
+// locale ("en"). When NEXT_PUBLIC_STORE_ID is set, every read here goes
+// straight to Supabase — the local sample data is only a fallback so local
+// dev/preview isn't blank before the store is provisioned.
+export function useProducts(locale = "da") {
+  const query = useQuery({
+    queryKey: ["products", STORE_ID, locale],
+    queryFn: () => (STORE_ID ? getSupabaseProducts(locale) : Promise.resolve(localProducts(locale))),
   });
-  const variants = useQuery({
-    queryKey: ["variants"],
-    queryFn: () => base44.entities.Variant.filter({ status: "published" }, "sku", 500),
+  return { products: query.data || [], isLoading: query.isLoading };
+}
+
+export function useProduct(slug, locale = "da") {
+  const query = useQuery({
+    queryKey: ["product", STORE_ID, slug, locale],
+    queryFn: () =>
+      STORE_ID
+        ? getSupabaseProductBySlug(slug, locale)
+        : Promise.resolve(localProducts(locale).find((p) => p.slug === slug) || null),
+    enabled: !!slug,
   });
-  return {
-    products: products.data || [],
-    variants: variants.data || [],
-    isLoading: products.isLoading || variants.isLoading,
-  };
+  return { product: query.data || null, isLoading: query.isLoading };
+}
+
+export function useCategories(locale = "da") {
+  const query = useQuery({
+    queryKey: ["categories", STORE_ID, locale],
+    queryFn: () => (STORE_ID ? getSupabaseCategories(locale) : Promise.resolve(localCategories(locale))),
+  });
+  return { categories: query.data || [], isLoading: query.isLoading };
+}
+
+export function useCategory(slug, locale = "da") {
+  const query = useQuery({
+    queryKey: ["category", STORE_ID, slug, locale],
+    queryFn: () =>
+      STORE_ID
+        ? getSupabaseCategoryBySlug(slug, locale)
+        : Promise.resolve(localCategories(locale).find((c) => c.slug === slug) || null),
+    enabled: !!slug,
+  });
+  return { category: query.data || null, isLoading: query.isLoading };
 }
 
 export function useSettings() {
-  const { data } = useQuery({
-    queryKey: ["settings"],
-    queryFn: async () => (await base44.entities.SiteSetting.list("-created_date", 1))[0] || null,
-  });
-  return data || {};
-}
-
-export function variantsOf(variants, productKey) {
-  return variants.filter((v) => v.product_key === productKey);
-}
-
-export function startingVariant(list) {
-  const priced = list.filter((v) => v.price_incl_vat > 0);
-  const pool = priced.length ? priced : list;
-  return [...pool].sort((a, b) => (a.price_incl_vat || 0) - (b.price_incl_vat || 0))[0];
+  return SETTINGS;
 }

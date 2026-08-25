@@ -1,14 +1,14 @@
 import React, { useState } from "react";
 import { Link } from "@/lib/next-router";
-import { base44 } from "@/api/base44Client";
-import { CheckCircle2, Mail, MapPin, Phone } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Mail, MapPin, Phone } from "lucide-react";
 import Breadcrumbs from "@/components/site/Breadcrumbs";
 import { L, useLang } from "@/lib/i18n";
 import { path } from "@/lib/routes";
 import { COMPANY } from "@/lib/company";
 import { useSettings } from "@/lib/useCatalog";
 import { useSeo, breadcrumbJsonLd, organizationJsonLd } from "@/lib/seo";
-import { TEMPLATES, sendTransactional } from "@/lib/emails";
+import { STORE_ID } from "@/lib/supabase/client";
+import { createInquiry } from "@/lib/supabase/inquiries";
 
 const FIELD = "w-full border border-slate-300 px-3 py-2.5 text-sm bg-white";
 const CATEGORIES = [
@@ -24,8 +24,9 @@ export default function Contact() {
   const lang = useLang();
   const settings = useSettings();
   const [form, setForm] = useState({ name: "", email: "", phone: "", category: "product", message: "", human: "" });
-  const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
+  const [sent, setSent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
 
   const crumbs = [{ name: L(lang, "Forside", "Home"), path: path("home", lang) }, { name: L(lang, "Kontakt", "Contact") }];
@@ -47,18 +48,28 @@ export default function Contact() {
       setError(L(lang, "Svar venligst korrekt på kontrolspørgsmålet.", "Please answer the verification question correctly."));
       return;
     }
+    // STORE_ID isn't issued yet — there's no tenant to write this inquiry
+    // against, so don't pretend the message was sent.
+    if (!STORE_ID) {
+      setError(L(lang, "Kontaktformularen tager ikke imod beskeder endnu. Skriv i stedet til contact@hjcontainer.com.",
+        "The contact form isn't accepting messages yet. Please email contact@hjcontainer.com instead."));
+      return;
+    }
+    setSubmitting(true);
     try {
-      await base44.entities.ContactMessage.create({
-        name: form.name, email: form.email, phone: form.phone,
-        category: form.category, message: form.message, language: lang,
+      await createInquiry({
+        name: form.name,
+        email: form.email,
+        phone: form.phone,
+        message: form.message,
+        details: { category: form.category, language: lang },
       });
-      const tpl = TEMPLATES.contact_received(form, lang);
-      await sendTransactional(form.email, tpl.subject, tpl.body);
-      await sendTransactional(settings.notification_email || COMPANY.email, `${L(lang, "Ny henvendelse", "New enquiry")} — ${form.name}`, tpl.body);
       setSent(true);
     } catch (err) {
       setError(L(lang, "Beskeden kunne ikke sendes. Skriv i stedet til contact@hjcontainer.com.",
         "The message could not be sent. Please email contact@hjcontainer.com instead."));
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -122,6 +133,14 @@ export default function Contact() {
           ) : (
             <form onSubmit={submit} className="border border-slate-200 p-6 space-y-4">
               <h2 className="font-heading font-bold text-lg">{L(lang, "Skriv til os", "Send us a message")}</h2>
+              {!STORE_ID && (
+                <p className="flex items-start gap-2 text-sm text-slate-600 border-l-2 border-orange-500 pl-3">
+                  <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-orange-500" />
+                  {L(lang, "Kontaktformularen tager ikke imod beskeder endnu. Skriv i stedet til ",
+                    "The contact form isn't accepting messages yet. Please email ")}
+                  <a href={`mailto:${COMPANY.email}`} className="underline">{COMPANY.email}</a>.
+                </p>
+              )}
               <label className="block text-sm"><span className="hjc-label block mb-1.5">{L(lang, "Henvendelsestype", "Enquiry type")}</span>
                 <select className={FIELD} value={form.category} onChange={(e) => set({ category: e.target.value })}>
                   {CATEGORIES.map(([v, da, en]) => <option key={v} value={v}>{lang === "en" ? en : da}</option>)}
@@ -138,8 +157,9 @@ export default function Contact() {
               <label className="block text-sm"><span className="hjc-label block mb-1.5">{L(lang, "Kontrolspørgsmål: hvad er 2 + 2?", "Verification: what is 2 + 2?")} *</span>
                 <input required className={FIELD} value={form.human} onChange={(e) => set({ human: e.target.value })} /></label>
               {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-              <button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3.5">
-                {L(lang, "Send besked", "Send message")}
+              <button type="submit" disabled={!STORE_ID || submitting}
+                className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-semibold py-3.5">
+                {submitting ? L(lang, "Sender…", "Sending…") : L(lang, "Send besked", "Send message")}
               </button>
               <p className="text-xs text-slate-500">
                 {L(lang, "Vi behandler dine oplysninger efter vores ", "We process your information in accordance with our ")}

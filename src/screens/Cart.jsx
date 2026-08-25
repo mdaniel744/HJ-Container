@@ -40,7 +40,7 @@ export default function Cart() {
                 <div className="flex-1">
                   <p className="font-heading font-bold">{i.title}</p>
                   <p className="hjc-mono text-[11px] text-slate-500 mt-1">
-                    SKU {i.sku} · {i.size} · {CONDITION_LABEL[i.condition]?.[lang]}
+                    SKU {i.sku} · {i.size} · {CONDITION_LABEL[i.condition]?.[lang] || i.condition}
                   </p>
                   <div className="mt-3 flex items-center gap-4">
                     <label className="flex items-center gap-2 text-sm">

@@ -3,7 +3,7 @@ import { Link } from "@/lib/next-router";
 import { Image } from "@/components/ui/image";
 import { ArrowUpRight } from "lucide-react";
 import { L } from "@/lib/i18n";
-import { COLLECTIONS, path } from "@/lib/routes";
+import { CONTAINER_TYPES, path } from "@/lib/routes";
 import { MEDIA } from "@/lib/media";
 
 const COPY = {
@@ -22,7 +22,7 @@ const COPY = {
 };
 
 export default function CategoryCards({ lang, counts }) {
-  const types = COLLECTIONS.filter((c) => c.kind === "type");
+  const types = CONTAINER_TYPES;
   return (
     <section className="mx-auto max-w-7xl px-5 py-20">
       <div className="flex flex-wrap items-end justify-between gap-4 border-b border-slate-200 pb-6">

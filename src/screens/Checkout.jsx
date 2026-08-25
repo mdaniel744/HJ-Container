@@ -1,6 +1,5 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "@/lib/next-router";
-import { base44 } from "@/api/base44Client";
+import { Link } from "@/lib/next-router";
 import { AlertTriangle } from "lucide-react";
 import Breadcrumbs from "@/components/site/Breadcrumbs";
 import StepBar from "@/components/checkout/StepBar";
@@ -8,24 +7,16 @@ import DeliveryCalculator from "@/components/delivery/DeliveryCalculator";
 import { CONDITION_LABEL, L, formatDKK, useLang } from "@/lib/i18n";
 import { path } from "@/lib/routes";
 import { useCart } from "@/lib/CartContext";
-import { UNLOADING_OPTIONS } from "@/lib/delivery";
 import { useSeo } from "@/lib/seo";
-import { TEMPLATES, sendTransactional } from "@/lib/emails";
-import { COMPANY } from "@/lib/company";
-import { useSettings } from "@/lib/useCatalog";
 
 const FIELD = "w-full border border-slate-300 px-3 py-2.5 text-sm bg-white";
 
 export default function Checkout() {
   const lang = useLang();
-  const navigate = useNavigate();
-  const { items, totalInclVat, totalExclVat, vatAmount, clear } = useCart();
-  const settings = useSettings();
+  const { items, totalInclVat, totalExclVat, vatAmount } = useCart();
   const [step, setStep] = useState(0);
   const [delivery, setDelivery] = useState(null);
   const [deliveryForm, setDeliveryForm] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
   const [form, setForm] = useState({
     customer_type: "private", full_name: "", company_name: "", cvr: "", email: "", phone: "",
     billing_address: "", delivery_address: "", postcode: "", city: "", country: "Danmark",
@@ -67,40 +58,6 @@ export default function Checkout() {
     return true;
   };
 
-  const submit = async () => {
-    setSubmitting(true);
-    setError("");
-    const order_number = `HJC-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 899999)}`;
-    const payload = {
-      order_number, language: lang,
-      ...form,
-      unloading_method: UNLOADING_OPTIONS.find((o) => o.value === deliveryForm?.unloading)?.[lang === "en" ? "en" : "da"] || "",
-      site_access: deliveryForm ? JSON.stringify(deliveryForm.access) : "",
-      ground_condition: deliveryForm?.access?.ground === "yes" ? L(lang, "Plant og bærende", "Level and load-bearing") : L(lang, "Skal vurderes", "To be assessed"),
-      items: items.map(({ sku, title, size, condition, quantity, unit_price_incl_vat, product_slug }) =>
-        ({ sku, title, size, condition, quantity, unit_price_incl_vat, product_slug })),
-      subtotal_excl_vat: Math.round(totalExclVat * 100) / 100,
-      vat_amount: Math.round(vatAmount * 100) / 100,
-      delivery_cost: deliveryCost,
-      unloading_cost: unloadingCost,
-      total_incl_vat: grandTotal,
-      status: "new",
-    };
-    delete payload.accept_terms;
-    try {
-      const order = await base44.entities.Order.create(payload);
-      const tpl = TEMPLATES.order_received(payload, lang);
-      await sendTransactional(form.email, tpl.subject, tpl.body);
-      await sendTransactional(settings.notification_email || COMPANY.email, `${L(lang, "Ny ordre", "New order")} ${order_number}`, tpl.body);
-      clear();
-      navigate(`${path("confirmation", lang)}?order=${order.order_number}`);
-    } catch (e) {
-      setError(L(lang, "Ordren kunne ikke gemmes. Prøv igen, eller kontakt os på contact@hjcontainer.com.",
-        "The order could not be saved. Please try again or contact us at contact@hjcontainer.com."));
-      setSubmitting(false);
-    }
-  };
-
   return (
     <div className="mx-auto max-w-4xl px-5 py-10">
       <Breadcrumbs items={[{ name: L(lang, "Forside", "Home"), path: path("home", lang) }, { name: L(lang, "Kurv", "Cart"), path: path("cart", lang) }, { name: L(lang, "Kasse", "Checkout") }]} />
@@ -116,7 +73,7 @@ export default function Checkout() {
                 <li key={i.sku} className="py-4 flex justify-between gap-4 text-sm">
                   <span>
                     <span className="font-medium">{i.quantity} × {i.title}</span>
-                    <span className="block hjc-mono text-[11px] text-slate-500">SKU {i.sku} · {i.size} · {CONDITION_LABEL[i.condition]?.[lang]}</span>
+                    <span className="block hjc-mono text-[11px] text-slate-500">SKU {i.sku} · {i.size} · {CONDITION_LABEL[i.condition]?.[lang] || i.condition}</span>
                   </span>
                   <span className="hjc-mono">{formatDKK(i.unit_price_incl_vat * i.quantity, lang)}</span>
                 </li>
@@ -254,13 +211,16 @@ export default function Checkout() {
               </label>
             </div>
 
-            {error && (
-              <p className="mt-4 flex items-center gap-2 text-sm text-red-700"><AlertTriangle className="w-4 h-4" />{error}</p>
-            )}
+            <p className="mt-4 flex items-start gap-2 text-sm text-slate-600 border-l-2 border-orange-500 pl-3">
+              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-orange-500" />
+              {L(lang, "Direkte bestilling tages ikke imod endnu. Send i stedet en ",
+                "Direct ordering isn't available yet. Please send a ")}
+              <Link to={path("quote", lang)} className="underline font-semibold">{L(lang, "tilbudsforespørgsel", "quote request")}</Link>.
+            </p>
 
-            <button disabled={!stepValid() || submitting} onClick={submit}
-              className="mt-6 w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-semibold py-4">
-              {submitting ? L(lang, "Sender ordre…", "Submitting order…") : L(lang, "Afgiv bindende ordre med betalingspligt", "Place binding order with obligation to pay")}
+            <button disabled
+              className="mt-6 w-full bg-orange-500 disabled:opacity-50 text-white font-semibold py-4">
+              {L(lang, "Afgiv bindende ordre med betalingspligt", "Place binding order with obligation to pay")}
             </button>
           </section>
         )}

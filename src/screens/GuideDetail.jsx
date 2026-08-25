@@ -3,7 +3,7 @@ import { Link, useParams } from "@/lib/next-router";
 import Breadcrumbs from "@/components/site/Breadcrumbs";
 import PageNotFoundContent from "@/components/site/PageNotFoundContent";
 import { L, useLang } from "@/lib/i18n";
-import { COLLECTIONS, path } from "@/lib/routes";
+import { CONTAINER_TYPES, path } from "@/lib/routes";
 import { GUIDES, guideBySlug } from "@/lib/guides";
 import { useSeo, breadcrumbJsonLd } from "@/lib/seo";
 import { useRegisterAltPath } from "@/lib/AltPath";
@@ -56,7 +56,7 @@ export default function GuideDetail() {
       <div className="mt-10 border-l-4 border-orange-500 bg-slate-50 p-6">
         <p className="text-slate-700">
           {L(lang, "Se udvalget af ", "Browse our ")}
-          {COLLECTIONS.filter((c) => c.kind === "type").map((c, i) => (
+          {CONTAINER_TYPES.map((c, i) => (
             <React.Fragment key={c.key}>
               {i > 0 && ", "}
               <Link to={path("category", lang, c.slug[lang])} className="underline font-semibold">{c.label[lang]}</Link>

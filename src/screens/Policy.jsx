@@ -1,7 +1,5 @@
 import React from "react";
 import { Link, useParams } from "@/lib/next-router";
-import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
 import Breadcrumbs from "@/components/site/Breadcrumbs";
 import PageNotFoundContent from "@/components/site/PageNotFoundContent";
 import { L, pick, useLang } from "@/lib/i18n";
@@ -9,14 +7,13 @@ import { path } from "@/lib/routes";
 import { COMPANY } from "@/lib/company";
 import { useSeo, breadcrumbJsonLd } from "@/lib/seo";
 import { useRegisterAltPath } from "@/lib/AltPath";
+import { POLICIES } from "@/data/content";
 
 export default function Policy() {
   const lang = useLang();
   const { slug } = useParams();
-  const { data: policies = [], isLoading } = useQuery({
-    queryKey: ["policies"],
-    queryFn: () => base44.entities.PolicyPage.filter({ published: true }, "sort_order", 50),
-  });
+  const policies = POLICIES.filter((p) => p.published);
+  const isLoading = false;
 
   const page = policies.find((p) => p.slug_da === slug || p.slug_en === slug);
   useRegisterAltPath(page ? { da: path("policy", "da", page.slug_da), en: path("policy", "en", page.slug_en) } : null);

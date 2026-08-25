@@ -3,87 +3,75 @@ import { Link } from "@/lib/next-router";
 import { SlidersHorizontal, X, LayoutGrid, List } from "lucide-react";
 import ShopFilters from "./ShopFilters";
 import ProductGrid from "./ProductGrid";
-import { CONDITION_LABEL, L, pick } from "@/lib/i18n";
-import { CATEGORY_LABEL, SIZE_ORDER, path } from "@/lib/routes";
+import { L } from "@/lib/i18n";
+import { path } from "@/lib/routes";
+import { useAttributeVocabulary } from "@/lib/useAttributeVocabulary";
 
-const EMPTY = { category: [], size: [], condition: [], color: [], availability: [], flags: [], maxPrice: null };
+const EMPTY_ATTRS = {};
 
-export default function CatalogView({ lang, products, variants, lockedFilter, initialQuery = "" }) {
-  const [filters, setFilters] = useState({ ...EMPTY });
+export default function CatalogView({ lang, products, categories = [], lockedCategoryId, initialQuery = "", initialAttrs = EMPTY_ATTRS }) {
+  const { facetDefinitions, resolve } = useAttributeVocabulary(lang);
+  const [filters, setFilters] = useState({ category: [], attrs: initialAttrs, maxPrice: null });
   const [sort, setSort] = useState("recommended");
   const [q, setQ] = useState(initialQuery);
   const [view, setView] = useState("grid");
   const [limit, setLimit] = useState(12);
   const [drawer, setDrawer] = useState(false);
 
-  const productByKey = useMemo(() => Object.fromEntries(products.map((p) => [p.key, p])), [products]);
-
-  const allRows = useMemo(
-    () => variants.map((v) => ({ variant: v, product: productByKey[v.product_key] })).filter((r) => r.product),
-    [variants, productByKey]
+  const scoped = useMemo(
+    () => (lockedCategoryId ? products.filter((p) => p.category_id === lockedCategoryId) : products),
+    [products, lockedCategoryId]
   );
 
-  const colors = useMemo(
-    () => [...new Set(allRows.map((r) => pick(r.variant, "color", lang)).filter(Boolean))],
-    [allRows, lang]
-  );
-  const maxPrice = useMemo(
-    () => Math.max(50000, ...allRows.map((r) => r.variant.price_incl_vat || 0)),
-    [allRows]
-  );
+  const maxPrice = useMemo(() => Math.max(50000, ...scoped.map((p) => p.price || 0)), [scoped]);
 
   const rows = useMemo(() => {
-    let list = allRows;
-    if (lockedFilter?.category) list = list.filter((r) => r.product.category === lockedFilter.category);
-    if (lockedFilter?.size) list = list.filter((r) => r.variant.size === lockedFilter.size);
-    if (filters.category.length) list = list.filter((r) => filters.category.includes(r.product.category));
-    if (filters.size.length) list = list.filter((r) => filters.size.includes(r.variant.size));
-    if (filters.condition.length) list = list.filter((r) => filters.condition.includes(r.variant.condition));
-    if (filters.color.length) list = list.filter((r) => filters.color.includes(pick(r.variant, "color", lang)));
-    if (filters.availability.includes("in_stock")) list = list.filter((r) => r.variant.availability === "in_stock");
-    if (filters.flags.includes("direct")) list = list.filter((r) => r.variant.direct_order);
-    if (filters.flags.includes("quote")) list = list.filter((r) => !r.variant.direct_order);
-    if (filters.maxPrice) list = list.filter((r) => !r.variant.price_incl_vat || r.variant.price_incl_vat <= filters.maxPrice);
+    let list = scoped;
+    if (filters.category.length) list = list.filter((p) => filters.category.includes(p.category_id));
+    for (const [key, rawValues] of Object.entries(filters.attrs)) {
+      if (rawValues && rawValues.length) list = list.filter((p) => rawValues.includes(String(p.attributes?.[key])));
+    }
+    if (filters.maxPrice) list = list.filter((p) => !p.price || p.price <= filters.maxPrice);
     if (q.trim()) {
       const t = q.toLowerCase();
-      list = list.filter((r) =>
-        [pick(r.product, "name", lang), r.variant.sku, r.variant.size, pick(r.variant, "color", lang)]
-          .filter(Boolean).join(" ").toLowerCase().includes(t)
-      );
+      list = list.filter((p) => [p.name, p.short_description, ...Object.values(p.attributes || {})].filter(Boolean).join(" ").toLowerCase().includes(t));
     }
+    const price = (p) => (p.sale_price > 0 ? p.sale_price : p.price) || 1e9;
     const sorters = {
-      price_asc: (a, b) => (a.variant.price_incl_vat || 1e9) - (b.variant.price_incl_vat || 1e9),
-      price_desc: (a, b) => (b.variant.price_incl_vat || 0) - (a.variant.price_incl_vat || 0),
-      newest: (a, b) => new Date(b.variant.created_date || 0) - new Date(a.variant.created_date || 0),
-      size: (a, b) => SIZE_ORDER[a.variant.size] - SIZE_ORDER[b.variant.size],
-      availability: (a, b) => (a.variant.availability === "in_stock" ? -1 : 1) - (b.variant.availability === "in_stock" ? -1 : 1),
-      recommended: (a, b) =>
-        (b.variant.direct_order ? 1 : 0) - (a.variant.direct_order ? 1 : 0) ||
-        SIZE_ORDER[a.variant.size] - SIZE_ORDER[b.variant.size],
+      price_asc: (a, b) => price(a) - price(b),
+      price_desc: (a, b) => (price(b) === 1e9 ? 0 : price(b)) - (price(a) === 1e9 ? 0 : price(a)),
+      name: (a, b) => a.name.localeCompare(b.name),
+      recommended: (a, b) => (b.is_featured ? 1 : 0) - (a.is_featured ? 1 : 0),
     };
     return [...list].sort(sorters[sort] || sorters.recommended);
-  }, [allRows, filters, q, sort, lang, lockedFilter]);
+  }, [scoped, filters, q, sort]);
+
+  const categoryOptions = lockedCategoryId ? [] : categories.map((c) => ({ id: c.id, name: c.name }));
 
   const chips = [
-    ...filters.category.map((c) => ({ key: "category", value: c, label: CATEGORY_LABEL[c][lang] })),
-    ...filters.size.map((s) => ({ key: "size", value: s, label: s })),
-    ...filters.condition.map((c) => ({ key: "condition", value: c, label: CONDITION_LABEL[c][lang] })),
-    ...filters.color.map((c) => ({ key: "color", value: c, label: c })),
-    ...filters.availability.map((c) => ({ key: "availability", value: c, label: L(lang, "På lager", "In stock") })),
-    ...filters.flags.map((f) => ({ key: "flags", value: f, label: f === "direct" ? L(lang, "Direkte køb", "Direct order") : L(lang, "Kræver tilbud", "Quote required") })),
+    ...filters.category.map((id) => ({ group: "category", value: id, label: categories.find((c) => c.id === id)?.name || id })),
+    ...Object.entries(filters.attrs).flatMap(([key, rawValues]) =>
+      (rawValues || []).map((raw) => ({ group: "attrs", key, value: raw, label: resolve(key, raw).value }))
+    ),
   ];
 
-  const removeChip = (chip) =>
-    setFilters({ ...filters, [chip.key]: filters[chip.key].filter((v) => v !== chip.value) });
+  const removeChip = (chip) => {
+    if (chip.group === "category") setFilters({ ...filters, category: filters.category.filter((v) => v !== chip.value) });
+    else setFilters({ ...filters, attrs: { ...filters.attrs, [chip.key]: (filters.attrs[chip.key] || []).filter((v) => v !== chip.value) } });
+  };
 
-  const filterPanel = <ShopFilters lang={lang} filters={filters} setFilters={setFilters} colors={colors} maxPrice={maxPrice} />;
+  const clearAll = () => setFilters({ category: [], attrs: {}, maxPrice: null });
+
+  const filterPanel = (
+    <ShopFilters lang={lang} filters={filters} setFilters={setFilters} categories={categoryOptions} facetDefinitions={facetDefinitions} maxPrice={maxPrice} />
+  );
 
   return (
     <div className="grid lg:grid-cols-[280px_1fr] gap-10">
       <aside className="hidden lg:block">
         <h2 className="font-heading font-bold text-lg border-b border-slate-900 pb-3">{L(lang, "Filtre", "Filters")}</h2>
         {filterPanel}
-        <button onClick={() => setFilters({ ...EMPTY })} className="mt-5 text-sm font-semibold underline underline-offset-4">
+        <button onClick={clearAll} className="mt-5 text-sm font-semibold underline underline-offset-4">
           {L(lang, "Ryd alle filtre", "Clear all filters")}
         </button>
       </aside>
@@ -95,7 +83,7 @@ export default function CatalogView({ lang, products, variants, lockedFilter, in
           </button>
           <label className="flex-1 min-w-[180px]">
             <span className="sr-only">{L(lang, "Søg i katalog", "Search catalogue")}</span>
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={L(lang, "Søg efter navn eller SKU", "Search by name or SKU")}
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={L(lang, "Søg efter navn", "Search by name")}
               className="w-full border border-slate-300 px-3 py-2 text-sm" />
           </label>
           <label className="text-sm flex items-center gap-2">
@@ -104,9 +92,7 @@ export default function CatalogView({ lang, products, variants, lockedFilter, in
               <option value="recommended">{L(lang, "Anbefalet", "Recommended")}</option>
               <option value="price_asc">{L(lang, "Pris: lav til høj", "Price: low to high")}</option>
               <option value="price_desc">{L(lang, "Pris: høj til lav", "Price: high to low")}</option>
-              <option value="newest">{L(lang, "Nyeste", "Newest")}</option>
-              <option value="size">{L(lang, "Størrelse", "Size")}</option>
-              <option value="availability">{L(lang, "Tilgængelighed", "Availability")}</option>
+              <option value="name">{L(lang, "Navn", "Name")}</option>
             </select>
           </label>
           <div className="hidden sm:flex border border-slate-300">
@@ -119,16 +105,16 @@ export default function CatalogView({ lang, products, variants, lockedFilter, in
 
         <div className="flex flex-wrap items-center gap-2 mt-4">
           <p className="hjc-mono text-[11px] text-slate-500 mr-2">
-            {rows.length} {L(lang, "varianter", "variants")}
+            {rows.length} {L(lang, "containere", "containers")}
           </p>
           {chips.map((c) => (
-            <button key={c.key + c.value} onClick={() => removeChip(c)}
+            <button key={c.group + (c.key || "") + c.value} onClick={() => removeChip(c)}
               className="inline-flex items-center gap-1.5 border border-slate-300 px-2.5 py-1 hjc-mono text-[11px] hover:bg-slate-50">
               {c.label} <X className="w-3 h-3" />
             </button>
           ))}
           {chips.length > 0 && (
-            <button onClick={() => setFilters({ ...EMPTY })} className="hjc-mono text-[11px] underline">
+            <button onClick={clearAll} className="hjc-mono text-[11px] underline">
               {L(lang, "Ryd alle", "Clear all")}
             </button>
           )}
@@ -143,7 +129,7 @@ export default function CatalogView({ lang, products, variants, lockedFilter, in
                   "Try clearing the filters, or send a quote request — we can often source a specific variant.")}
               </p>
               <div className="mt-6 flex flex-wrap gap-3 justify-center">
-                <button onClick={() => { setFilters({ ...EMPTY }); setQ(""); }} className="bg-slate-900 text-white font-semibold px-5 py-3 text-sm">
+                <button onClick={() => { clearAll(); setQ(""); }} className="bg-slate-900 text-white font-semibold px-5 py-3 text-sm">
                   {L(lang, "Ryd filtre", "Clear filters")}
                 </button>
                 <Link to={path("quote", lang)} className="border border-slate-900 font-semibold px-5 py-3 text-sm">
@@ -153,7 +139,7 @@ export default function CatalogView({ lang, products, variants, lockedFilter, in
             </div>
           ) : (
             <>
-              <ProductGrid rows={rows.slice(0, limit)} lang={lang} view={view} />
+              <ProductGrid products={rows.slice(0, limit)} lang={lang} view={view} />
               {rows.length > limit && (
                 <div className="mt-10 text-center">
                   <button onClick={() => setLimit((l) => l + 12)} className="border border-slate-900 font-semibold px-7 py-3.5 text-sm hover:bg-slate-50">
@@ -176,7 +162,7 @@ export default function CatalogView({ lang, products, variants, lockedFilter, in
             </div>
             {filterPanel}
             <div className="mt-5 flex gap-3">
-              <button onClick={() => setFilters({ ...EMPTY })} className="flex-1 border border-slate-300 py-3 text-sm font-semibold">
+              <button onClick={clearAll} className="flex-1 border border-slate-300 py-3 text-sm font-semibold">
                 {L(lang, "Ryd", "Clear")}
               </button>
               <button onClick={() => setDrawer(false)} className="flex-1 bg-slate-900 text-white py-3 text-sm font-semibold">

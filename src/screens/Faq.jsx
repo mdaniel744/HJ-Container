@@ -1,12 +1,11 @@
 import React, { useMemo, useState } from "react";
 import { Link } from "@/lib/next-router";
-import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
 import Breadcrumbs from "@/components/site/Breadcrumbs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { L, pick, useLang } from "@/lib/i18n";
 import { path } from "@/lib/routes";
 import { useSeo, breadcrumbJsonLd } from "@/lib/seo";
+import { FAQS } from "@/data/content";
 
 const CATS = [
   ["products", "Produkter", "Products"],
@@ -26,10 +25,7 @@ export default function Faq() {
   const lang = useLang();
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("all");
-  const { data: faqs = [] } = useQuery({
-    queryKey: ["faqs"],
-    queryFn: () => base44.entities.Faq.filter({ published: true }, "sort_order", 100),
-  });
+  const faqs = useMemo(() => FAQS.filter((f) => f.published), []);
 
   const filtered = useMemo(() => {
     let list = faqs;
