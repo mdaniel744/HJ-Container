@@ -1,23 +1,17 @@
 import React from "react";
-import { L, formatDKK } from "@/lib/i18n";
+import { AVAILABILITY_LABEL, L, formatDKK, pick } from "@/lib/i18n";
 
-export default function PriceBlock({ product, lang, delivery }) {
-  const priced = product.price > 0;
-  const effective = product.sale_price > 0 && product.sale_price < product.price ? product.sale_price : product.price;
-  const excl = priced ? effective / 1.25 : 0;
-  const vat = priced ? effective - excl : 0;
+export default function PriceBlock({ variant, lang, delivery }) {
+  const priced = variant.price_incl_vat > 0;
+  const excl = priced ? variant.price_incl_vat / 1.25 : 0;
+  const vat = priced ? variant.price_incl_vat - excl : 0;
 
   return (
     <div className="border border-slate-200">
       <div className="p-5">
         {priced ? (
           <>
-            <p className="font-heading text-3xl font-extrabold">
-              {product.sale_price > 0 && product.sale_price < product.price && (
-                <span className="line-through text-slate-400 mr-3 text-xl font-normal">{formatDKK(product.price, lang)}</span>
-              )}
-              {formatDKK(effective, lang)}
-            </p>
+            <p className="font-heading text-3xl font-extrabold">{formatDKK(variant.price_incl_vat, lang)}</p>
             <p className="hjc-mono text-[11px] text-slate-500 mt-1">{L(lang, "inkl. 25% moms", "incl. 25% VAT")}</p>
             <dl className="mt-4 space-y-1.5 hjc-mono text-[12px] text-slate-600">
               <div className="flex justify-between"><dt>{L(lang, "Pris ekskl. moms", "Price excl. VAT")}</dt><dd>{formatDKK(excl, lang)}</dd></div>
@@ -33,7 +27,7 @@ export default function PriceBlock({ product, lang, delivery }) {
               {delivery?.calculable && (
                 <div className="flex justify-between pt-2 border-t border-slate-200 font-semibold text-slate-900">
                   <dt>{L(lang, "Total inkl. moms", "Total incl. VAT")}</dt>
-                  <dd>{formatDKK(effective + delivery.total, lang)}</dd>
+                  <dd>{formatDKK(variant.price_incl_vat + delivery.total, lang)}</dd>
                 </div>
               )}
             </dl>
@@ -42,11 +36,19 @@ export default function PriceBlock({ product, lang, delivery }) {
           <>
             <p className="font-heading text-2xl font-extrabold">{L(lang, "Pris på forespørgsel", "Price on request")}</p>
             <p className="mt-2 text-sm text-slate-600">
-              {L(lang, "Denne container prissættes individuelt. Send en tilbudsforespørgsel, så vender vi tilbage med en pris.",
-                "This container is priced individually. Send a quote request and we will come back with a price.")}
+              {L(lang, "Denne variant prissættes individuelt. Send en tilbudsforespørgsel, så vender vi tilbage med en pris.",
+                "This variant is priced individually. Send a quote request and we will come back with a price.")}
             </p>
           </>
         )}
+      </div>
+      <div className="border-t border-slate-200 px-5 py-3 flex flex-wrap gap-x-6 gap-y-1 hjc-mono text-[11px]">
+        <span className={variant.availability === "in_stock" ? "text-emerald-700" : "text-slate-500"}>
+          {AVAILABILITY_LABEL[variant.availability]?.[lang]}
+          {variant.stock_quantity ? ` — ${variant.stock_quantity} ${L(lang, "stk.", "units")}` : ""}
+        </span>
+        {variant.depot && <span className="text-slate-500">{variant.depot}</span>}
+        {pick(variant, "lead_time", lang) && <span className="text-slate-500">{pick(variant, "lead_time", lang)}</span>}
       </div>
     </div>
   );
