@@ -1,7 +1,7 @@
 "use client";
 
-import PageNotFound from "@/lib/PageNotFound";
+import PageNotFoundContent from "@/components/site/PageNotFoundContent";
 
 export default function NotFound() {
-  return <PageNotFound />;
+  return <PageNotFoundContent />;
 }

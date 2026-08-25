@@ -56,8 +56,8 @@ function standaloneProduct({ key, category, nameDa, nameEn, slugDa, slugEn, shor
 
 // Storefront-owned demo data. This keeps the shop useful before the existing
 // dashboard database has HJ Container product-family and variant tables.
-// Once those tables are connected, remote published records replace these
-// rows automatically through useCatalog().
+// Once those tables are connected, useCatalog() can switch to the published
+// dashboard records while keeping this file as a safe preview fallback.
 export const DEMO_PRODUCTS = [
   {
     key: "standard",

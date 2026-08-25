@@ -1,13 +1,12 @@
 import React, { useMemo, useState } from "react";
 import { Link } from "@/lib/next-router";
-import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
 import Breadcrumbs from "@/components/site/Breadcrumbs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { L, pick, useLang } from "@/lib/i18n";
 import { path } from "@/lib/routes";
 import { useSeo, breadcrumbJsonLd } from "@/lib/seo";
 import { applyFaqOverrides } from "@/lib/faqOverrides";
+import { FAQS } from "@/data/content";
 
 const CATS = [
   ["products", "Produkter", "Products"],
@@ -27,11 +26,10 @@ export default function Faq() {
   const lang = useLang();
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("all");
-  const { data: remoteFaqs = [] } = useQuery({
-    queryKey: ["faqs"],
-    queryFn: () => base44.entities.Faq.filter({ published: true }, "sort_order", 100),
-  });
-  const faqs = applyFaqOverrides(remoteFaqs);
+  const faqs = useMemo(
+    () => applyFaqOverrides(FAQS.filter((faq) => faq.published).sort((a, b) => a.sort_order - b.sort_order)),
+    []
+  );
 
   const filtered = useMemo(() => {
     let list = faqs;

@@ -1,42 +1,35 @@
 import React, { useState } from "react";
 import { Link, useSearchParams } from "@/lib/next-router";
-import { base44 } from "@/api/base44Client";
-import { CheckCircle2, Plus, Trash2, Upload } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Plus, Trash2, Upload } from "lucide-react";
 import Breadcrumbs from "@/components/site/Breadcrumbs";
 import StepBar from "@/components/checkout/StepBar";
 import { CONDITION_LABEL, L, pick, useLang } from "@/lib/i18n";
 import { path } from "@/lib/routes";
 import { UNLOADING_OPTIONS } from "@/lib/delivery";
-import { useCatalog, useSettings } from "@/lib/useCatalog";
+import { useProducts } from "@/lib/useCatalog";
 import { useSeo } from "@/lib/seo";
-import { TEMPLATES, sendTransactional } from "@/lib/emails";
 import { COMPANY } from "@/lib/company";
-import {
-  SPECIALTY_CONTAINER_TYPES,
-  containerTypeFromQuoteKey,
-  specialtyQuoteKey,
-} from "@/lib/containerTypes";
+import { STORE_ID } from "@/lib/supabase/client";
+import { createInquiry } from "@/lib/supabase/inquiries";
 
-const FIELD = "w-full border border-slate-300 px-3 py-2.5 text-sm bg-white";
+const FIELD = "w-full border border-slate-400 px-3 py-3 text-base text-slate-900 placeholder:text-slate-500 bg-white";
 
 export default function Quote() {
   const lang = useLang();
-  const { products } = useCatalog();
-  const settings = useSettings();
+  const { products } = useProducts(lang);
   const [params] = useSearchParams();
-  const requestedType = SPECIALTY_CONTAINER_TYPES.find((type) => type.key === params.get("type"));
   const [step, setStep] = useState(0);
-  const [done, setDone] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [lines, setLines] = useState([
-    { product_key: requestedType ? specialtyQuoteKey(requestedType.key) : params.get("product") || "", size: params.get("size") || "20ft", condition: params.get("condition") || "used", color: "", quantity: 1 },
+    { product_key: params.get("product") || "", size: params.get("size") || "20ft", condition: params.get("condition") || "used", color: "", quantity: 1 },
   ]);
   const [form, setForm] = useState({
     address: "", postcode: "", city: "", country: "Danmark", site_access: "", ground_condition: "",
     unloading_method: "", delivery_period: "", full_name: "", company_name: "", cvr: "", email: "", phone: "",
     notes: "", attachments: [],
   });
+  const [error, setError] = useState("");
+  const [sent, setSent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
   const setLine = (i, patch) => setLines((l) => l.map((x, idx) => (idx === i ? { ...x, ...patch } : x)));
@@ -54,49 +47,66 @@ export default function Quote() {
     ? ["Products", "Delivery", "Your details", "Notes & files", "Review"]
     : ["Produkter", "Levering", "Dine oplysninger", "Noter og filer", "Gennemgang"];
 
-  const upload = async (e) => {
+  // No backend is wired up yet, so uploads just record the local file name.
+  const upload = (e) => {
     const files = Array.from(e.target.files || []);
-    setUploading(true);
-    for (const file of files) {
-      try {
-        const { file_url } = await base44.integrations.Core.UploadFile({ file });
-        set({ attachments: [...form.attachments, file_url] });
-      } catch (err) {
-        console.warn(err);
-      }
-    }
-    setUploading(false);
+    set({ attachments: [...form.attachments, ...files.map((f) => f.name)] });
   };
 
   const valid = () => {
     if (step === 0) return lines.every((l) => l.product_key && l.quantity > 0);
-    if (step === 1) return form.postcode && form.city && form.unloading_method;
+    if (step === 1) return form.country && form.postcode && form.city && form.unloading_method;
     if (step === 2) return form.full_name && form.email.includes("@") && form.phone;
     return true;
   };
 
-  const submit = async () => {
-    setSubmitting(true);
-    const request_number = `HJC-Q-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 89999)}`;
-    const payload = {
-      request_number, language: lang, ...form,
-      lines: lines.map((l) => ({
-        ...l,
-        title: containerTypeFromQuoteKey(l.product_key)?.label[lang]
-          || pick(products.find((p) => p.key === l.product_key) || {}, "name", lang),
-        condition: CONDITION_LABEL[l.condition][lang],
-      })),
-      status: "new",
-    };
-    await base44.entities.QuoteRequest.create(payload);
-    const tpl = TEMPLATES.quote_received(payload, lang);
-    await sendTransactional(form.email, tpl.subject, tpl.body);
-    await sendTransactional(settings.notification_email || COMPANY.email, `${L(lang, "Ny tilbudsforespørgsel", "New quote request")} ${request_number}`, tpl.body);
-    setDone(request_number);
-    setSubmitting(false);
+  const lineSummary = (l) => {
+    const name = pick(products.find((product) => product.key === l.product_key) || {}, "name", lang);
+    return `${l.quantity} × ${name} — ${l.size}, ${CONDITION_LABEL[l.condition][lang]}${l.color ? `, ${l.color}` : ""}`;
   };
 
-  if (done) {
+  const submit = async () => {
+    setError("");
+    if (!STORE_ID) {
+      setError(L(lang, "Tilbudsforespørgsler tages ikke imod endnu. Skriv i stedet til contact@hjcontainer.com.",
+        "Quote requests aren't being accepted yet. Please email contact@hjcontainer.com instead."));
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await createInquiry({
+        productId: null,
+        name: form.full_name,
+        email: form.email,
+        phone: form.phone,
+        message: [
+          ...lines.map(lineSummary),
+          `${L(lang, "Leveringssted", "Delivery location")}: ${form.address} ${form.postcode} ${form.city}`,
+          `${L(lang, "Aflæsning", "Unloading")}: ${form.unloading_method}`,
+          form.notes,
+        ].filter(Boolean).join("\n"),
+        details: {
+          language: lang,
+          lines,
+          delivery: {
+            address: form.address, postcode: form.postcode, city: form.city, country: form.country,
+            site_access: form.site_access, ground_condition: form.ground_condition,
+            unloading_method: form.unloading_method, delivery_period: form.delivery_period,
+          },
+          company_name: form.company_name, cvr: form.cvr,
+          notes: form.notes, attachments: form.attachments,
+        },
+      });
+      setSent(true);
+    } catch (err) {
+      setError(L(lang, "Forespørgslen kunne ikke sendes. Skriv i stedet til contact@hjcontainer.com.",
+        "The request could not be sent. Please email contact@hjcontainer.com instead."));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (sent) {
     return (
       <div className="mx-auto max-w-2xl px-5 py-20">
         <CheckCircle2 className="w-12 h-12 text-emerald-600" strokeWidth={1.5} />
@@ -105,7 +115,6 @@ export default function Quote() {
           {L(lang, "Forespørgslen er ikke bindende og er ikke et gennemført køb. Vi gennemgår oplysningerne og vender tilbage med et tilbud pr. e-mail.",
             "The request is non-binding and is not a completed purchase. We will review the details and return with an offer by email.")}
         </p>
-        <p className="hjc-mono text-sm mt-5">{L(lang, "Forespørgselsnummer", "Request number")}: <strong>{done}</strong></p>
         <p className="hjc-mono text-[11px] text-slate-500 mt-6">{COMPANY.name} · CVR {COMPANY.cvr} · {COMPANY.email}</p>
         <Link to={path("shop", lang)} className="inline-block mt-8 bg-slate-900 text-white font-semibold px-6 py-3 text-sm">
           {L(lang, "Tilbage til shop", "Back to shop")}
@@ -115,7 +124,7 @@ export default function Quote() {
   }
 
   return (
-    <div className="customer-form mx-auto max-w-4xl px-5 py-10 text-slate-800">
+    <div className="mx-auto max-w-4xl px-5 py-10">
       <Breadcrumbs items={[{ name: L(lang, "Forside", "Home"), path: path("home", lang) }, { name: L(lang, "Få et tilbud", "Request a Quote") }]} />
       <h1 className="mt-6 font-heading text-3xl font-extrabold">{L(lang, "Anmod om tilbud", "Request a quote")}</h1>
       <p className="mt-3 text-slate-600 max-w-2xl">
@@ -131,25 +140,24 @@ export default function Quote() {
               <div key={i} className="border border-slate-200 p-5 grid gap-4 sm:grid-cols-2">
                 <label className="text-sm sm:col-span-2"><span className="hjc-label block mb-1.5">{L(lang, "Containertype", "Container family")} *</span>
                   <select className={FIELD} value={l.product_key} onChange={(e) => {
-                    const nextProduct = products.find((p) => p.key === e.target.value);
+                    const product = products.find((candidate) => candidate.key === e.target.value);
                     setLine(i, {
                       product_key: e.target.value,
-                      ...(nextProduct?.category === "open_side" && l.size === "10ft" ? { size: "20ft" } : {}),
+                      ...(product?.catalog_mode === "standalone" ? { size: product.size || "20ft" } : {}),
+                      ...(product?.category === "open_side" && l.size === "10ft" ? { size: "20ft" } : {}),
                     });
                   }}>
                     <option value="">{L(lang, "Vælg", "Select")}</option>
-                    {products.map((p) => <option key={p.key} value={p.key}>{pick(p, "name", lang)}</option>)}
-                    <optgroup label={L(lang, "Specialløsninger", "Specialist solutions")}>
-                      {SPECIALTY_CONTAINER_TYPES.map((type) => (
-                        <option key={type.key} value={specialtyQuoteKey(type.key)}>{type.label[lang]}</option>
-                      ))}
-                    </optgroup>
+                    {products.map((product) => <option key={product.key} value={product.key}>{pick(product, "name", lang)}</option>)}
                   </select>
                 </label>
                 <label className="text-sm"><span className="hjc-label block mb-1.5">{L(lang, "Størrelse", "Size")}</span>
                   <select className={FIELD} value={l.size} onChange={(e) => setLine(i, { size: e.target.value })}>
-                    {(products.find((p) => p.key === l.product_key)?.category === "open_side" ? ["20ft", "40ft"] : ["10ft", "20ft", "40ft"])
-                      .map((s) => <option key={s} value={s}>{s}</option>)}
+                    {(products.find((product) => product.key === l.product_key)?.catalog_mode === "standalone"
+                      ? [products.find((product) => product.key === l.product_key)?.size || "20ft"]
+                      : products.find((product) => product.key === l.product_key)?.category === "open_side"
+                        ? ["20ft", "40ft"]
+                        : ["10ft", "20ft", "40ft"]).map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </label>
                 <label className="text-sm"><span className="hjc-label block mb-1.5">{L(lang, "Stand", "Condition")}</span>
@@ -179,12 +187,10 @@ export default function Quote() {
 
         {step === 1 && (
           <section className="grid gap-4 sm:grid-cols-2">
-            <div className="text-sm sm:col-span-2">
-              <span className="hjc-label block mb-1.5">{L(lang, "Leveringsland", "Delivery country")}</span>
-              <p className="border border-slate-200 bg-slate-100 px-3 py-2.5 text-slate-700">
-                {L(lang, "Danmark — vi leverer kun i Danmark", "Denmark — delivery within Denmark only")}
-              </p>
-            </div>
+            <label className="text-sm sm:col-span-2"><span className="hjc-label block mb-1.5">{L(lang, "Leveringsland", "Delivery country")} *</span>
+              <input className={FIELD} list="quote-country-suggestions" value={form.country} onChange={(e) => set({ country: e.target.value })} />
+              <datalist id="quote-country-suggestions"><option value="Danmark" /><option value="Denmark" /></datalist>
+            </label>
             <label className="text-sm sm:col-span-2"><span className="hjc-label block mb-1.5">{L(lang, "Adresse", "Address")}</span>
               <input className={FIELD} value={form.address} onChange={(e) => set({ address: e.target.value })} /></label>
             <label className="text-sm"><span className="hjc-label block mb-1.5">{L(lang, "Postnummer", "Postcode")} *</span>
@@ -233,7 +239,7 @@ export default function Quote() {
                 "Photos of the placement area, access road and ground help us plan the transport correctly.")}
             </p>
             <label className="mt-4 inline-flex items-center gap-2 border border-slate-900 px-5 py-3 text-sm font-semibold cursor-pointer">
-              <Upload className="w-4 h-4" /> {uploading ? L(lang, "Uploader…", "Uploading…") : L(lang, "Vælg filer", "Choose files")}
+              <Upload className="w-4 h-4" /> {L(lang, "Vælg filer", "Choose files")}
               <input type="file" multiple accept="image/*,.pdf" className="sr-only" onChange={upload} />
             </label>
             {form.attachments.length > 0 && (
@@ -249,10 +255,7 @@ export default function Quote() {
             <h2 className="font-heading text-xl font-bold">{L(lang, "Gennemgå din forespørgsel", "Review your request")}</h2>
             <ul className="mt-4 border border-slate-200 divide-y divide-slate-200 text-sm">
               {lines.map((l, i) => (
-                <li key={i} className="px-4 py-3">
-                  {l.quantity} × {containerTypeFromQuoteKey(l.product_key)?.label[lang] || pick(products.find((p) => p.key === l.product_key) || {}, "name", lang)} — {l.size}, {CONDITION_LABEL[l.condition][lang]}
-                  {l.color ? `, ${l.color}` : ""}
-                </li>
+                <li key={i} className="px-4 py-3">{lineSummary(l)}</li>
               ))}
               <li className="px-4 py-3">{L(lang, "Leveringssted", "Delivery location")}: {form.address} {form.postcode} {form.city}</li>
               <li className="px-4 py-3">{L(lang, "Aflæsning", "Unloading")}: {form.unloading_method}</li>
@@ -262,7 +265,16 @@ export default function Quote() {
               {L(lang, "Denne forespørgsel er ikke bindende og udgør ikke et gennemført køb.",
                 "This request is non-binding and does not constitute a completed purchase.")}
             </p>
-            <button onClick={submit} disabled={submitting}
+            {!STORE_ID && (
+              <p className="mt-4 flex items-start gap-2 text-sm text-slate-600 border-l-2 border-orange-500 pl-3">
+                <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-orange-500" />
+                {L(lang, "Tilbudsforespørgsler tages ikke imod endnu. Skriv i stedet til ",
+                  "Quote requests aren't being accepted yet. Please email ")}
+                <a href={`mailto:${COMPANY.email}`} className="underline">{COMPANY.email}</a>.
+              </p>
+            )}
+            {error && <p role="alert" className="mt-4 text-sm text-red-700">{error}</p>}
+            <button onClick={submit} disabled={!STORE_ID || submitting}
               className="mt-6 w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-semibold py-4">
               {submitting ? L(lang, "Sender…", "Sending…") : L(lang, "Send tilbudsforespørgsel", "Submit Quote Request")}
             </button>

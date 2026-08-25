@@ -51,3 +51,7 @@ export const CATEGORY_LABEL = {
 };
 
 export const SIZE_ORDER = { "10ft": 1, "20ft": 2, "40ft": 3 };
+
+// Compatibility exports used by the shared header, footer and size cards.
+export const CONTAINER_TYPES = COLLECTIONS.filter((collection) => collection.kind === "type");
+export const SIZES = ["10ft", "20ft", "40ft"];

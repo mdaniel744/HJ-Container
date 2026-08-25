@@ -1,7 +1,5 @@
 import React from "react";
 import { Link, useParams } from "@/lib/next-router";
-import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
 import Breadcrumbs from "@/components/site/Breadcrumbs";
 import PageNotFoundContent from "@/components/site/PageNotFoundContent";
 import { L, pick, useLang } from "@/lib/i18n";
@@ -11,6 +9,7 @@ import { useSeo, breadcrumbJsonLd } from "@/lib/seo";
 import { useRegisterAltPath } from "@/lib/AltPath";
 import { applyPolicyOverrides } from "@/lib/policyOverrides";
 import { useSettings } from "@/lib/useCatalog";
+import { POLICIES } from "@/data/content";
 
 function PolicyBody({ body }) {
   const nodes = [];
@@ -45,11 +44,7 @@ export default function Policy() {
   const lang = useLang();
   const settings = useSettings();
   const { slug } = useParams();
-  const { data: remotePolicies = [], isLoading } = useQuery({
-    queryKey: ["policies"],
-    queryFn: () => base44.entities.PolicyPage.filter({ published: true }, "sort_order", 50),
-  });
-  const policies = applyPolicyOverrides(remotePolicies, settings);
+  const policies = applyPolicyOverrides(POLICIES.filter((policy) => policy.published), settings);
 
   const page = policies.find((p) => p.slug_da === slug || p.slug_en === slug);
   useRegisterAltPath(page ? { da: path("policy", "da", page.slug_da), en: path("policy", "en", page.slug_en) } : null);
@@ -67,7 +62,6 @@ export default function Policy() {
     jsonLd: page ? [breadcrumbJsonLd(crumbs.filter((c) => c.path))] : [],
   });
 
-  if (isLoading) return <p className="mx-auto max-w-3xl px-5 py-20 hjc-mono text-sm text-slate-500">{L(lang, "Indlæser…", "Loading…")}</p>;
   if (!page) return <PageNotFoundContent />;
 
   const body = pick(page, "body", lang);

@@ -1,7 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "@/lib/next-router";
-import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
 import { Mail, Minus, Plus } from "lucide-react";
 import Breadcrumbs from "@/components/site/Breadcrumbs";
 import PageNotFoundContent from "@/components/site/PageNotFoundContent";
@@ -21,6 +19,7 @@ import { useSeo, breadcrumbJsonLd, organizationJsonLd } from "@/lib/seo";
 import { useRegisterAltPath } from "@/lib/AltPath";
 import { GUIDES } from "@/lib/guides";
 import { applyFaqOverrides } from "@/lib/faqOverrides";
+import { FAQS } from "@/data/content";
 
 const SCHEMA_AVAIL = { in_stock: "InStock", out_of_stock: "OutOfStock", on_request: "PreOrder", backorder: "BackOrder" };
 
@@ -65,11 +64,7 @@ export default function Product() {
     navigate(`${path("product", lang, pick(targetProduct, "slug", lang))}?variant=${v.sku}`, { replace: true });
   };
 
-  const { data: remoteFaqs = [] } = useQuery({
-    queryKey: ["faqs-product"],
-    queryFn: () => base44.entities.Faq.filter({ published: true }, "sort_order", 60),
-  });
-  const faqs = applyFaqOverrides(remoteFaqs);
+  const faqs = applyFaqOverrides(FAQS.filter((faq) => faq.published));
 
   useRegisterAltPath(product ? {
     da: path("product", "da", product.slug_da) + (!isStandalone && selected ? `?variant=${selected.sku}` : ""),

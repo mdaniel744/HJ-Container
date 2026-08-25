@@ -1,26 +1,14 @@
-import { base44 } from "@/api/base44Client";
 import { getComplianceBlockers } from "@/lib/compliance";
 import { buildFeedXml, feedRow, validateVariant } from "@/lib/merchant";
+import { DEMO_PRODUCTS, DEMO_VARIANTS } from "@/data/demoCatalog";
+import { SETTINGS } from "@/data/content";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request) {
-  let products;
-  let variants;
-  let settingsList;
-  try {
-    [products, variants, settingsList] = await Promise.all([
-      base44.entities.Product.filter({ status: "published" }, "sort_order", 200),
-      base44.entities.Variant.filter({ status: "published" }, "sku", 500),
-      base44.entities.SiteSetting.list("-created_date", 1),
-    ]);
-  } catch {
-    return new Response("Merchant feed is temporarily unavailable because the catalogue service could not be reached.", {
-      status: 502,
-      headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
-    });
-  }
-  const settings = settingsList[0] || {};
+  const products = DEMO_PRODUCTS;
+  const variants = DEMO_VARIANTS;
+  const settings = SETTINGS;
   const blockers = getComplianceBlockers(settings);
 
   if (blockers.length) {

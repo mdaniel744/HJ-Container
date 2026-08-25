@@ -1,6 +1,4 @@
 import React from "react";
-import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
 import Hero from "@/components/home/Hero";
 import CategoryCards from "@/components/home/CategoryCards";
 import SizeCards from "@/components/home/SizeCards";
@@ -15,20 +13,14 @@ import { useCatalog } from "@/lib/useCatalog";
 import { useSeo, organizationJsonLd } from "@/lib/seo";
 import { path } from "@/lib/routes";
 import { applyFaqOverrides } from "@/lib/faqOverrides";
+import { FAQS, POLICIES } from "@/data/content";
 
 export default function Home() {
   const lang = useLang();
   const origin = typeof window === "undefined" ? "" : window.location.origin;
   const { products, variants } = useCatalog();
-  const { data: remoteFaqs = [] } = useQuery({
-    queryKey: ["faqs-home"],
-    queryFn: () => base44.entities.Faq.filter({ published: true, show_on_home: true }, "sort_order", 8),
-  });
-  const faqs = applyFaqOverrides(remoteFaqs);
-  const { data: policies = [] } = useQuery({
-    queryKey: ["policies"],
-    queryFn: () => base44.entities.PolicyPage.filter({ published: true }, "sort_order", 50),
-  });
+  const faqs = applyFaqOverrides(FAQS.filter((faq) => faq.published && faq.show_on_home).slice(0, 8));
+  const policies = POLICIES.filter((policy) => policy.published);
 
   const deliveryPolicy = policies.find((p) => p.slug_da === "levering-og-fragt");
 

@@ -1,14 +1,13 @@
 import React from "react";
 import Image from "next/image";
 import { Link } from "@/lib/next-router";
-import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
 import { Mail, MapPin, Phone } from "lucide-react";
 import { L, pick, useLang } from "@/lib/i18n";
-import { path, COLLECTIONS } from "@/lib/routes";
+import { path, CONTAINER_TYPES } from "@/lib/routes";
 import { COMPANY } from "@/lib/company";
 import { useSettings } from "@/lib/useCatalog";
 import { GUIDES } from "@/lib/guides";
+import { POLICIES } from "@/data/content";
 
 const HIDDEN_POLICY_SLUGS = new Set([
   "handelsbetingelser",
@@ -30,10 +29,7 @@ const COPYRIGHT_POLICY_LINKS = [
 export default function Footer() {
   const lang = useLang();
   const settings = useSettings();
-  const { data: policies = [] } = useQuery({
-    queryKey: ["policies"],
-    queryFn: () => base44.entities.PolicyPage.filter({ published: true }, "sort_order", 50),
-  });
+  const policies = POLICIES.filter((p) => p.published);
 
   return (
     <footer className="mt-24 border-t border-slate-200 bg-slate-50">
@@ -69,8 +65,8 @@ export default function Footer() {
         <div>
           <p className="hjc-label mb-4">{L(lang, "Containere", "Containers")}</p>
           <ul className="space-y-2 text-sm text-slate-600">
-            {COLLECTIONS.map((c) => (
-              <li key={c.key + c.kind}>
+            {CONTAINER_TYPES.map((c) => (
+              <li key={c.key}>
                 <Link className="hover:text-slate-900" to={path("category", lang, c.slug[lang])}>{c.label[lang]}</Link>
               </li>
             ))}

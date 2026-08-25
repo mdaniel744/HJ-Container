@@ -1,6 +1,5 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "@/lib/next-router";
-import { base44 } from "@/api/base44Client";
+import { Link } from "@/lib/next-router";
 import { AlertTriangle } from "lucide-react";
 import Breadcrumbs from "@/components/site/Breadcrumbs";
 import StepBar from "@/components/checkout/StepBar";
@@ -8,25 +7,16 @@ import DeliveryCalculator from "@/components/delivery/DeliveryCalculator";
 import { CONDITION_LABEL, L, formatDKK, useLang } from "@/lib/i18n";
 import { path } from "@/lib/routes";
 import { useCart } from "@/lib/CartContext";
-import { UNLOADING_OPTIONS } from "@/lib/delivery";
 import { useSeo } from "@/lib/seo";
-import { TEMPLATES, sendTransactional } from "@/lib/emails";
-import { COMPANY } from "@/lib/company";
-import { useSettings } from "@/lib/useCatalog";
-import { deliveryEstimateText, paymentDeadlineText } from "@/lib/compliance";
 
 const FIELD = "w-full border border-slate-400 px-3 py-3 text-base text-slate-900 placeholder:text-slate-500 bg-white";
 
 export default function Checkout() {
   const lang = useLang();
-  const navigate = useNavigate();
-  const { items, totalInclVat, totalExclVat, vatAmount, clear } = useCart();
-  const settings = useSettings();
+  const { items, totalInclVat, totalExclVat, vatAmount } = useCart();
   const [step, setStep] = useState(0);
   const [delivery, setDelivery] = useState(null);
   const [deliveryForm, setDeliveryForm] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
   const [form, setForm] = useState({
     customer_type: "private", full_name: "", company_name: "", cvr: "", email: "", phone: "",
     billing_address: "", delivery_address: "", postcode: "", city: "", country: "Danmark",
@@ -62,44 +52,10 @@ export default function Checkout() {
   const stepValid = () => {
     if (step === 1) return form.full_name && form.email.includes("@") && form.phone && form.billing_address &&
       (form.customer_type === "private" || (form.company_name && form.cvr));
-    if (step === 2) return form.delivery_address && form.postcode && form.city;
+    if (step === 2) return form.delivery_address && form.postcode && form.city && form.country;
     if (step === 3) return delivery?.calculable;
     if (step === 5) return form.accept_terms;
     return true;
-  };
-
-  const submit = async () => {
-    setSubmitting(true);
-    setError("");
-    const order_number = `HJC-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 899999)}`;
-    const payload = {
-      order_number, language: lang,
-      ...form,
-      unloading_method: UNLOADING_OPTIONS.find((o) => o.value === deliveryForm?.unloading)?.[lang === "en" ? "en" : "da"] || "",
-      site_access: deliveryForm ? JSON.stringify(deliveryForm.access) : "",
-      ground_condition: deliveryForm?.access?.ground === "yes" ? L(lang, "Plant og bærende", "Level and load-bearing") : L(lang, "Skal vurderes", "To be assessed"),
-      items: items.map(({ sku, title, size, condition, quantity, unit_price_incl_vat, product_slug }) =>
-        ({ sku, title, size, condition, quantity, unit_price_incl_vat, product_slug })),
-      subtotal_excl_vat: Math.round(totalExclVat * 100) / 100,
-      vat_amount: Math.round(vatAmount * 100) / 100,
-      delivery_cost: deliveryCost,
-      unloading_cost: unloadingCost,
-      total_incl_vat: grandTotal,
-      status: "new",
-    };
-    delete payload.accept_terms;
-    try {
-      const order = await base44.entities.Order.create(payload);
-      const tpl = TEMPLATES.order_received(payload, lang);
-      await sendTransactional(form.email, tpl.subject, tpl.body);
-      await sendTransactional(settings.notification_email || COMPANY.email, `${L(lang, "Ny ordre", "New order")} ${order_number}`, tpl.body);
-      clear();
-      navigate(`${path("confirmation", lang)}?order=${order.order_number}`);
-    } catch (e) {
-      setError(L(lang, "Ordren kunne ikke gemmes. Prøv igen, eller kontakt os på contact@hjcontainer.com.",
-        "The order could not be saved. Please try again or contact us at contact@hjcontainer.com."));
-      setSubmitting(false);
-    }
   };
 
   return (
@@ -114,16 +70,16 @@ export default function Checkout() {
             <h2 className="font-heading text-xl font-bold">{steps[0]}</h2>
             <ul className="mt-4 divide-y divide-slate-200 border-y border-slate-200">
               {items.map((i) => (
-                <li key={i.sku} className="py-4 flex justify-between gap-4 text-base">
+                <li key={i.sku} className="py-4 flex justify-between gap-4 text-sm">
                   <span>
                     <span className="font-medium">{i.quantity} × {i.title}</span>
-                    <span className="block text-sm text-slate-600">SKU {i.sku} · {i.size} · {CONDITION_LABEL[i.condition]?.[lang]}</span>
+                    <span className="block hjc-mono text-[11px] text-slate-500">SKU {i.sku} · {i.size} · {CONDITION_LABEL[i.condition]?.[lang] || i.condition}</span>
                   </span>
-                  <span className="font-semibold text-slate-900">{formatDKK(i.unit_price_incl_vat * i.quantity, lang)}</span>
+                  <span className="hjc-mono">{formatDKK(i.unit_price_incl_vat * i.quantity, lang)}</span>
                 </li>
               ))}
             </ul>
-            <p className="mt-4 text-base font-medium text-slate-700">
+            <p className="mt-4 hjc-mono text-[12px] text-slate-600">
               {L(lang, "Varer i alt inkl. moms", "Items total incl. VAT")}: {formatDKK(totalInclVat, lang)}
             </p>
           </section>
@@ -135,7 +91,7 @@ export default function Checkout() {
             <div className="mt-4 flex gap-2">
               {[["private", L(lang, "Privatkunde", "Private customer")], ["business", L(lang, "Erhvervskunde", "Business customer")]].map(([v, label]) => (
                 <button key={v} onClick={() => set({ customer_type: v })} aria-pressed={form.customer_type === v}
-                  className={`px-4 py-2.5 border text-base font-medium ${form.customer_type === v ? "bg-slate-900 text-white border-slate-900" : "border-slate-400 text-slate-800"}`}>
+                  className={`px-4 py-2.5 border text-sm ${form.customer_type === v ? "bg-slate-900 text-white border-slate-900" : "border-slate-300"}`}>
                   {label}
                 </button>
               ))}
@@ -167,12 +123,10 @@ export default function Checkout() {
           <section>
             <h2 className="font-heading text-xl font-bold">{steps[2]}</h2>
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <div className="text-sm sm:col-span-2">
-                <span className="hjc-label block mb-1.5">{L(lang, "Leveringsland", "Delivery country")}</span>
-                <p className="border border-slate-300 bg-slate-100 px-3 py-3 text-base text-slate-800">
-                  {L(lang, "Danmark — vi leverer kun i Danmark", "Denmark — delivery within Denmark only")}
-                </p>
-              </div>
+              <label className="text-sm sm:col-span-2"><span className="hjc-label block mb-1.5">{L(lang, "Leveringsland", "Delivery country")} *</span>
+                <input className={FIELD} list="checkout-country-suggestions" value={form.country} onChange={(e) => set({ country: e.target.value })} />
+                <datalist id="checkout-country-suggestions"><option value="Danmark" /><option value="Denmark" /></datalist>
+              </label>
               <label className="text-sm sm:col-span-2"><span className="hjc-label block mb-1.5">{L(lang, "Leveringsadresse", "Delivery address")} *</span>
                 <input className={FIELD} value={form.delivery_address} onChange={(e) => set({ delivery_address: e.target.value })} /></label>
               <label className="text-sm"><span className="hjc-label block mb-1.5">{L(lang, "Postnummer", "Postcode")} *</span>
@@ -195,7 +149,7 @@ export default function Checkout() {
                 onChange={({ form: f, result }) => { setDeliveryForm(f); setDelivery(result); if (f.postcode) set({ postcode: f.postcode }); }} />
             </div>
             {delivery && !delivery.calculable && (
-              <p className="mt-4 text-base leading-6 text-slate-800">
+              <p className="mt-4 text-sm text-slate-700">
                 {L(lang, "Direkte køb er ikke muligt for denne leveringskonfiguration. ", "Direct checkout is not available for this delivery configuration. ")}
                 <Link to={path("quote", lang)} className="underline font-semibold">{L(lang, "Send en tilbudsforespørgsel", "Send a quote request")}</Link>.
               </p>
@@ -207,13 +161,13 @@ export default function Checkout() {
           <section>
             <h2 className="font-heading text-xl font-bold">{steps[4]}</h2>
             <div className="mt-5 space-y-3">
-              {[["invoice", L(lang, "Faktura", "Invoice"), `${L(lang, "Vi sender en faktura med betalingsoplysninger efter gennemgang af ordren.", "We send an invoice with payment details after reviewing the order.")} ${paymentDeadlineText(settings, lang)}.`],
-                ["bank_transfer", L(lang, "Bankoverførsel", "Bank transfer"), `${L(lang, "Du modtager kontooplysninger pr. e-mail og overfører beløbet inden levering.", "You receive account details by email and transfer the amount before delivery.")} ${paymentDeadlineText(settings, lang)}.`]].map(([v, title, desc]) => (
+              {[["invoice", L(lang, "Faktura", "Invoice"), L(lang, "Vi sender en faktura med betalingsoplysninger efter gennemgang af ordren.", "We send an invoice with payment details after reviewing the order.")],
+                ["bank_transfer", L(lang, "Bankoverførsel", "Bank transfer"), L(lang, "Du modtager kontooplysninger pr. e-mail og overfører beløbet inden levering.", "You receive account details by email and transfer the amount before delivery.")]].map(([v, title, desc]) => (
                 <label key={v} className={`flex gap-3 border p-4 cursor-pointer ${form.payment_method === v ? "border-slate-900" : "border-slate-300"}`}>
                   <input type="radio" name="payment" className="mt-1" checked={form.payment_method === v} onChange={() => set({ payment_method: v })} />
                   <span>
                     <span className="font-heading font-bold block">{title}</span>
-                    <span className="text-base leading-6 text-slate-700">{desc}</span>
+                    <span className="text-sm text-slate-600">{desc}</span>
                   </span>
                 </label>
               ))}
@@ -224,7 +178,7 @@ export default function Checkout() {
         {step === 5 && (
           <section>
             <h2 className="font-heading text-xl font-bold">{steps[5]}</h2>
-            <dl className="mt-5 border border-slate-300 divide-y divide-slate-200 text-base">
+            <dl className="mt-5 border border-slate-200 divide-y divide-slate-200 text-sm">
               {[
                 [L(lang, "Varer", "Items"), items.map((i) => `${i.quantity} × ${i.title} (${i.sku})`).join(", ")],
                 [L(lang, "Pris ekskl. moms", "Price excl. VAT"), formatDKK(totalExclVat, lang)],
@@ -232,17 +186,17 @@ export default function Checkout() {
                 [L(lang, "Levering", "Delivery"), formatDKK(deliveryCost, lang)],
                 [L(lang, "Aflæsning", "Unloading"), formatDKK(unloadingCost, lang)],
                 [L(lang, "Total inkl. moms", "Total incl. VAT"), formatDKK(grandTotal, lang)],
-                [L(lang, "Leveringsadresse", "Delivery address"), `${form.delivery_address}, ${form.postcode} ${form.city}`],
-                [L(lang, "Leveringsplan", "Delivery plan"), deliveryEstimateText(settings, lang)],
+                [L(lang, "Leveringsadresse", "Delivery address"), `${form.delivery_address}, ${form.postcode} ${form.city}, ${form.country}`],
+                [L(lang, "Forventet leveringsperiode", "Estimated delivery period"), L(lang, "Planlægges efter ordregennemgang og bekræftes pr. e-mail", "Planned after order review and confirmed by email")],
                 [L(lang, "Betalingsmetode", "Payment method"), form.payment_method === "invoice" ? L(lang, "Faktura", "Invoice") : L(lang, "Bankoverførsel", "Bank transfer")],
               ].map(([k, v]) => (
                 <div key={k} className="flex justify-between gap-6 px-4 py-3">
-                  <dt className="text-slate-700">{k}</dt><dd className="text-right font-semibold text-slate-900">{v}</dd>
+                  <dt className="text-slate-500">{k}</dt><dd className="text-right font-medium">{v}</dd>
                 </div>
               ))}
             </dl>
 
-            <div className="mt-5 space-y-4 text-base leading-6 text-slate-800">
+            <div className="mt-5 space-y-3 text-sm">
               <label className="flex gap-3">
                 <input type="checkbox" className="mt-1 w-4 h-4" checked={form.accept_terms} onChange={(e) => set({ accept_terms: e.target.checked })} />
                 <span>
@@ -261,13 +215,16 @@ export default function Checkout() {
               </label>
             </div>
 
-            {error && (
-              <p className="mt-4 flex items-center gap-2 text-base text-red-700"><AlertTriangle className="w-4 h-4" />{error}</p>
-            )}
+            <p className="mt-4 flex items-start gap-2 text-sm text-slate-600 border-l-2 border-orange-500 pl-3">
+              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-orange-500" />
+              {L(lang, "Direkte bestilling tages ikke imod endnu. Send i stedet en ",
+                "Direct ordering isn't available yet. Please send a ")}
+              <Link to={path("quote", lang)} className="underline font-semibold">{L(lang, "tilbudsforespørgsel", "quote request")}</Link>.
+            </p>
 
-            <button disabled={!stepValid() || submitting} onClick={submit}
-              className="mt-6 w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white text-lg font-semibold py-4">
-              {submitting ? L(lang, "Sender ordre…", "Submitting order…") : L(lang, "Afgiv ordre", "Place Order")}
+            <button disabled
+              className="mt-6 w-full bg-orange-500 disabled:opacity-50 text-white font-semibold py-4">
+              {L(lang, "Afgiv ordre", "Place Order")}
             </button>
           </section>
         )}
@@ -275,12 +232,12 @@ export default function Checkout() {
 
       <div className="mt-8 flex justify-between border-t border-slate-200 pt-6">
         <button onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0}
-          className="border border-slate-400 px-5 py-3 text-base font-semibold disabled:opacity-40">
+          className="border border-slate-300 px-5 py-3 text-sm font-semibold disabled:opacity-40">
           {L(lang, "Tilbage", "Back")}
         </button>
         {step < 5 && (
           <button onClick={() => stepValid() && setStep((s) => s + 1)} disabled={!stepValid()}
-            className="bg-slate-900 text-white px-6 py-3 text-base font-semibold disabled:opacity-40">
+            className="bg-slate-900 text-white px-6 py-3 text-sm font-semibold disabled:opacity-40">
             {L(lang, "Fortsæt", "Continue")}
           </button>
         )}

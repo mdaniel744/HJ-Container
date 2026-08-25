@@ -6,15 +6,9 @@ import { path } from "@/lib/routes";
 import { startingVariant, variantsOf } from "@/lib/useCatalog";
 
 export default function FeaturedProducts({ lang, products, variants }) {
-  const featured = products.filter((p) => p.featured);
-  const cards = [];
-  featured.forEach((p) => {
-    const list = variantsOf(variants, p.key);
-    const direct = list.filter((v) => v.direct_order && v.price_incl_vat > 0);
-    (direct.length ? direct.slice(0, 3) : [startingVariant(list)]).forEach((v) => v && cards.push({ p, v }));
-  });
+  const featured = products.filter((product) => product.featured).slice(0, 8);
 
-  if (!cards.length) return null;
+  if (!featured.length) return null;
 
   return (
     <section className="mx-auto max-w-7xl px-5 py-20">
@@ -28,9 +22,10 @@ export default function FeaturedProducts({ lang, products, variants }) {
         </Link>
       </div>
       <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        {cards.slice(0, 8).map(({ p, v }) => (
-          <ProductCard key={v.sku} product={p} variant={v} lang={lang} />
-        ))}
+        {featured.map((product) => {
+          const variant = startingVariant(variantsOf(variants, product.key));
+          return variant ? <ProductCard key={product.key} product={product} variant={variant} lang={lang} /> : null;
+        })}
       </div>
     </section>
   );

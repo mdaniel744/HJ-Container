@@ -3,7 +3,7 @@ import Image from "next/image";
 import { Link, useNavigate } from "@/lib/next-router";
 import { Menu, Search, ShoppingCart, X } from "lucide-react";
 import { useLang, L } from "@/lib/i18n";
-import { path, COLLECTIONS } from "@/lib/routes";
+import { path, CONTAINER_TYPES } from "@/lib/routes";
 import { useCart } from "@/lib/CartContext";
 import LanguageSwitcher from "./LanguageSwitcher";
 import NavDropdown from "./NavDropdown";
@@ -24,10 +24,10 @@ export default function Header() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const shopItems = COLLECTIONS.map((c) => ({
+  const shopItems = CONTAINER_TYPES.map((c) => ({
     to: path("category", lang, c.slug[lang]),
     label: c.label[lang],
-    meta: c.kind === "size" ? c.key : null,
+    meta: null,
   }));
 
   const submitSearch = (e) => {
