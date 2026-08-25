@@ -14,7 +14,11 @@ const INTRO = {
   standard: { da: "Standardcontainere er den mest anvendte containertype i Danmark. De er robuste, stabelbare og velegnede til opmagasinering, byggepladser og lager. Vælg mellem 10, 20 og 40 fod i ny eller brugt stand.", en: "Standard containers are the most widely used container type in Denmark. They are robust, stackable and well suited to storage, construction sites and warehousing. Choose between 10ft, 20ft and 40ft in new or used condition." },
   high_cube: { da: "High Cube-containere er cirka en fod højere end standardcontainere. Den ekstra indvendige højde giver bedre plads til høje paller, maskiner og arbejde inde i containeren.", en: "High Cube containers are roughly one foot taller than standard containers. The extra internal height provides better space for tall pallets, machinery and working inside the unit." },
   open_side: { da: "Open Side-containere har døre i hele længden, så du kan læsse med truck direkte fra siden. Det er den rigtige løsning til lange emner og hurtig adgang.", en: "Open Side containers have doors along the full length so you can load by forklift directly from the side. This is the right solution for long items and fast access." },
-  "10ft": { da: "10 fods containere er kompakte og lette at placere, hvor pladsen er begrænset. De findes både som standard, High Cube og Open Side.", en: "10ft containers are compact and easy to place where space is limited. They are available as Standard, High Cube and Open Side." },
+  storage: { da: "Opbevaringscontainere er selvstændige produkter til sikker, tør og aflåst lagerplads. Se de aktuelle enheder og deres faste konfigurationer nedenfor.", en: "Storage containers are standalone products for secure, dry and lockable space. Browse the currently available units and their fixed configurations below." },
+  office: { da: "Kontorcontainere er indrettede, selvstændige moduler til arbejdspladser, møder og midlertidig administration. Hvert produkt vises med sin egen konfiguration.", en: "Office containers are fitted standalone modules for workspaces, meetings and temporary administration. Each product is shown with its own configuration." },
+  insulated: { da: "Isolerede containere beskytter bedre mod temperaturudsving, kondens og kulde. De tilgængelige produkter vises som komplette enheder uden en variantvælger.", en: "Insulated containers provide improved protection from temperature changes, condensation and cold. Available products are shown as complete units without a variant selector." },
+  tunnel: { da: "Tunnelcontainere har døre i begge ender og giver effektiv gennemgang, lastning og adgang. Hver dørkonfiguration vises som et selvstændigt produkt.", en: "Tunnel containers have doors at both ends for efficient through-access, loading and movement. Each door configuration is shown as a standalone product." },
+  "10ft": { da: "10 fods containere er kompakte og lette at placere, hvor pladsen er begrænset. De findes som standard- og High Cube-containere.", en: "10ft containers are compact and easy to place where space is limited. They are available as Standard and High Cube containers." },
   "20ft": { da: "20 fods containere er den mest efterspurgte størrelse med god volumen og håndterbar levering. De findes både som standard, High Cube og Open Side.", en: "20ft containers are the most requested size, with good volume and manageable delivery. They are available as Standard, High Cube and Open Side." },
   "40ft": { da: "40 fods containere giver det største rumfang, men kræver en lang og bærende adgangsvej. De findes både som standard, High Cube og Open Side.", en: "40ft containers provide the largest volume but require a long, load-bearing access route. They are available as Standard, High Cube and Open Side." },
 };
@@ -47,7 +51,9 @@ export default function Category() {
   if (!collection) return <PageNotFoundContent />;
 
   const locked = collection.kind === "type" ? { category: collection.key } : { size: collection.key };
-  const related = COLLECTIONS.filter((c) => c.kind !== collection.kind);
+  const related = collection.kind === "type"
+    ? COLLECTIONS.filter((candidate) => candidate.kind === "type" && candidate.key !== collection.key)
+    : COLLECTIONS.filter((candidate) => candidate.kind === "type");
 
   return (
     <div className="mx-auto max-w-7xl px-5 py-10">

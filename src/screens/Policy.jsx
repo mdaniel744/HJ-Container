@@ -9,14 +9,47 @@ import { path } from "@/lib/routes";
 import { COMPANY } from "@/lib/company";
 import { useSeo, breadcrumbJsonLd } from "@/lib/seo";
 import { useRegisterAltPath } from "@/lib/AltPath";
+import { applyPolicyOverrides } from "@/lib/policyOverrides";
+import { useSettings } from "@/lib/useCatalog";
+
+function PolicyBody({ body }) {
+  const nodes = [];
+  let bullets = [];
+  const flushBullets = () => {
+    if (!bullets.length) return;
+    nodes.push(
+      <ul key={`list-${nodes.length}`} className="list-disc pl-6 space-y-2">
+        {bullets.map((item, i) => <li key={i}>{item}</li>)}
+      </ul>
+    );
+    bullets = [];
+  };
+
+  body.split("\n").map((line) => line.trim()).filter(Boolean).forEach((line) => {
+    if (line.startsWith("- ")) {
+      bullets.push(line.slice(2));
+      return;
+    }
+    flushBullets();
+    if (line.startsWith("## ")) {
+      nodes.push(<h2 key={`heading-${nodes.length}`} className="font-heading text-xl font-bold pt-4">{line.slice(3)}</h2>);
+    } else {
+      nodes.push(<p key={`paragraph-${nodes.length}`}>{line}</p>);
+    }
+  });
+  flushBullets();
+  return nodes;
+}
 
 export default function Policy() {
   const lang = useLang();
+  const settings = useSettings();
   const { slug } = useParams();
-  const { data: policies = [], isLoading } = useQuery({
+  const { data: remotePolicies = [], isLoading } = useQuery({
     queryKey: ["policies"],
     queryFn: () => base44.entities.PolicyPage.filter({ published: true }, "sort_order", 50),
   });
+  const policies = applyPolicyOverrides(remotePolicies, settings);
 
   const page = policies.find((p) => p.slug_da === slug || p.slug_en === slug);
   useRegisterAltPath(page ? { da: path("policy", "da", page.slug_da), en: path("policy", "en", page.slug_en) } : null);
@@ -44,13 +77,7 @@ export default function Policy() {
       <Breadcrumbs items={crumbs} />
       <h1 className="mt-6 font-heading text-3xl md:text-4xl font-extrabold">{title}</h1>
       <div className="mt-8 space-y-5 text-slate-700 leading-relaxed">
-        {body.split("\n").filter((l) => l.trim()).map((paragraph, i) =>
-          paragraph.startsWith("## ") ? (
-            <h2 key={i} className="font-heading text-xl font-bold pt-4">{paragraph.replace("## ", "")}</h2>
-          ) : (
-            <p key={i}>{paragraph}</p>
-          )
-        )}
+        <PolicyBody body={body} />
       </div>
 
       <div className="mt-12 border-t border-slate-200 pt-6 text-sm text-slate-600">

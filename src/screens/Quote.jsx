@@ -11,6 +11,11 @@ import { useCatalog, useSettings } from "@/lib/useCatalog";
 import { useSeo } from "@/lib/seo";
 import { TEMPLATES, sendTransactional } from "@/lib/emails";
 import { COMPANY } from "@/lib/company";
+import {
+  SPECIALTY_CONTAINER_TYPES,
+  containerTypeFromQuoteKey,
+  specialtyQuoteKey,
+} from "@/lib/containerTypes";
 
 const FIELD = "w-full border border-slate-300 px-3 py-2.5 text-sm bg-white";
 
@@ -19,12 +24,13 @@ export default function Quote() {
   const { products } = useCatalog();
   const settings = useSettings();
   const [params] = useSearchParams();
+  const requestedType = SPECIALTY_CONTAINER_TYPES.find((type) => type.key === params.get("type"));
   const [step, setStep] = useState(0);
   const [done, setDone] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [lines, setLines] = useState([
-    { product_key: params.get("product") || "", size: params.get("size") || "20ft", condition: params.get("condition") || "used", color: "", quantity: 1 },
+    { product_key: requestedType ? specialtyQuoteKey(requestedType.key) : params.get("product") || "", size: params.get("size") || "20ft", condition: params.get("condition") || "used", color: "", quantity: 1 },
   ]);
   const [form, setForm] = useState({
     address: "", postcode: "", city: "", country: "Danmark", site_access: "", ground_condition: "",
@@ -76,7 +82,8 @@ export default function Quote() {
       request_number, language: lang, ...form,
       lines: lines.map((l) => ({
         ...l,
-        title: pick(products.find((p) => p.key === l.product_key) || {}, "name", lang),
+        title: containerTypeFromQuoteKey(l.product_key)?.label[lang]
+          || pick(products.find((p) => p.key === l.product_key) || {}, "name", lang),
         condition: CONDITION_LABEL[l.condition][lang],
       })),
       status: "new",
@@ -108,7 +115,7 @@ export default function Quote() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-5 py-10">
+    <div className="customer-form mx-auto max-w-4xl px-5 py-10 text-slate-800">
       <Breadcrumbs items={[{ name: L(lang, "Forside", "Home"), path: path("home", lang) }, { name: L(lang, "Få et tilbud", "Request a Quote") }]} />
       <h1 className="mt-6 font-heading text-3xl font-extrabold">{L(lang, "Anmod om tilbud", "Request a quote")}</h1>
       <p className="mt-3 text-slate-600 max-w-2xl">
@@ -123,14 +130,26 @@ export default function Quote() {
             {lines.map((l, i) => (
               <div key={i} className="border border-slate-200 p-5 grid gap-4 sm:grid-cols-2">
                 <label className="text-sm sm:col-span-2"><span className="hjc-label block mb-1.5">{L(lang, "Containertype", "Container family")} *</span>
-                  <select className={FIELD} value={l.product_key} onChange={(e) => setLine(i, { product_key: e.target.value })}>
+                  <select className={FIELD} value={l.product_key} onChange={(e) => {
+                    const nextProduct = products.find((p) => p.key === e.target.value);
+                    setLine(i, {
+                      product_key: e.target.value,
+                      ...(nextProduct?.category === "open_side" && l.size === "10ft" ? { size: "20ft" } : {}),
+                    });
+                  }}>
                     <option value="">{L(lang, "Vælg", "Select")}</option>
                     {products.map((p) => <option key={p.key} value={p.key}>{pick(p, "name", lang)}</option>)}
+                    <optgroup label={L(lang, "Specialløsninger", "Specialist solutions")}>
+                      {SPECIALTY_CONTAINER_TYPES.map((type) => (
+                        <option key={type.key} value={specialtyQuoteKey(type.key)}>{type.label[lang]}</option>
+                      ))}
+                    </optgroup>
                   </select>
                 </label>
                 <label className="text-sm"><span className="hjc-label block mb-1.5">{L(lang, "Størrelse", "Size")}</span>
                   <select className={FIELD} value={l.size} onChange={(e) => setLine(i, { size: e.target.value })}>
-                    {["10ft", "20ft", "40ft"].map((s) => <option key={s} value={s}>{s}</option>)}
+                    {(products.find((p) => p.key === l.product_key)?.category === "open_side" ? ["20ft", "40ft"] : ["10ft", "20ft", "40ft"])
+                      .map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </label>
                 <label className="text-sm"><span className="hjc-label block mb-1.5">{L(lang, "Stand", "Condition")}</span>
@@ -160,6 +179,12 @@ export default function Quote() {
 
         {step === 1 && (
           <section className="grid gap-4 sm:grid-cols-2">
+            <div className="text-sm sm:col-span-2">
+              <span className="hjc-label block mb-1.5">{L(lang, "Leveringsland", "Delivery country")}</span>
+              <p className="border border-slate-200 bg-slate-100 px-3 py-2.5 text-slate-700">
+                {L(lang, "Danmark — vi leverer kun i Danmark", "Denmark — delivery within Denmark only")}
+              </p>
+            </div>
             <label className="text-sm sm:col-span-2"><span className="hjc-label block mb-1.5">{L(lang, "Adresse", "Address")}</span>
               <input className={FIELD} value={form.address} onChange={(e) => set({ address: e.target.value })} /></label>
             <label className="text-sm"><span className="hjc-label block mb-1.5">{L(lang, "Postnummer", "Postcode")} *</span>
@@ -225,7 +250,7 @@ export default function Quote() {
             <ul className="mt-4 border border-slate-200 divide-y divide-slate-200 text-sm">
               {lines.map((l, i) => (
                 <li key={i} className="px-4 py-3">
-                  {l.quantity} × {pick(products.find((p) => p.key === l.product_key) || {}, "name", lang)} — {l.size}, {CONDITION_LABEL[l.condition][lang]}
+                  {l.quantity} × {containerTypeFromQuoteKey(l.product_key)?.label[lang] || pick(products.find((p) => p.key === l.product_key) || {}, "name", lang)} — {l.size}, {CONDITION_LABEL[l.condition][lang]}
                   {l.color ? `, ${l.color}` : ""}
                 </li>
               ))}

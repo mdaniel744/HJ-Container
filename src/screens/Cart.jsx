@@ -20,7 +20,7 @@ export default function Cart() {
   });
 
   return (
-    <div className="mx-auto max-w-5xl px-5 py-10">
+    <div className="purchase-flow customer-form mx-auto max-w-5xl px-5 py-10">
       <Breadcrumbs items={[{ name: L(lang, "Forside", "Home"), path: path("home", lang) }, { name: L(lang, "Kurv", "Cart") }]} />
       <h1 className="mt-6 font-heading text-3xl font-extrabold">{L(lang, "Din kurv", "Your cart")}</h1>
 
@@ -35,43 +35,43 @@ export default function Cart() {
         <div className="mt-8 grid lg:grid-cols-[1fr_320px] gap-10">
           <ul className="divide-y divide-slate-200 border-y border-slate-200">
             {items.map((i) => (
-              <li key={i.sku} className="py-5 flex gap-4">
+              <li key={i.sku} className="py-5 flex gap-4 text-slate-800">
                 {i.image && <Image src={i.image} alt={i.title} className="w-24 h-24 shrink-0 border border-slate-200" />}
                 <div className="flex-1">
-                  <p className="font-heading font-bold">{i.title}</p>
-                  <p className="hjc-mono text-[11px] text-slate-500 mt-1">
+                  <p className="text-lg font-semibold leading-6 text-slate-900">{i.title}</p>
+                  <p className="text-sm text-slate-600 mt-1">
                     SKU {i.sku} · {i.size} · {CONDITION_LABEL[i.condition]?.[lang]}
                   </p>
                   <div className="mt-3 flex items-center gap-4">
-                    <label className="flex items-center gap-2 text-sm">
+                    <label className="flex items-center gap-2 text-base">
                       <span className="hjc-label">{L(lang, "Antal", "Qty")}</span>
                       <input type="number" min="1" value={i.quantity} onChange={(e) => updateQuantity(i.sku, Number(e.target.value))}
-                        className="w-16 border border-slate-300 px-2 py-1.5 hjc-mono text-sm" />
+                        className="w-16 border border-slate-300 px-2 py-2 text-base text-slate-900" />
                     </label>
-                    <button onClick={() => removeItem(i.sku)} className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-red-600">
+                    <button onClick={() => removeItem(i.sku)} className="inline-flex items-center gap-1.5 text-base text-slate-700 hover:text-red-700">
                       <Trash2 className="w-4 h-4" /> {L(lang, "Fjern", "Remove")}
                     </button>
                   </div>
                 </div>
-                <p className="font-heading font-bold whitespace-nowrap">{formatDKK(i.unit_price_incl_vat * i.quantity, lang)}</p>
+                <p className="text-lg font-semibold text-slate-900 whitespace-nowrap">{formatDKK(i.unit_price_incl_vat * i.quantity, lang)}</p>
               </li>
             ))}
           </ul>
 
           <aside className="border border-slate-200 p-5 h-fit">
             <h2 className="font-heading font-bold text-lg">{L(lang, "Opsummering", "Summary")}</h2>
-            <dl className="mt-4 space-y-2 hjc-mono text-[12px] text-slate-600">
+            <dl className="mt-4 space-y-2 text-base leading-6 text-slate-700">
               <div className="flex justify-between"><dt>{L(lang, "Ekskl. moms", "Excl. VAT")}</dt><dd>{formatDKK(totalExclVat, lang)}</dd></div>
               <div className="flex justify-between"><dt>{L(lang, "Moms (25%)", "VAT (25%)")}</dt><dd>{formatDKK(vatAmount, lang)}</dd></div>
               <div className="flex justify-between"><dt>{L(lang, "Levering", "Delivery")}</dt><dd>{L(lang, "beregnes i kassen", "calculated at checkout")}</dd></div>
-              <div className="flex justify-between pt-2 border-t border-slate-200 text-slate-900 font-semibold text-sm">
+              <div className="flex justify-between pt-2 border-t border-slate-200 text-slate-900 font-semibold">
                 <dt>{L(lang, "Varer i alt inkl. moms", "Items total incl. VAT")}</dt><dd>{formatDKK(totalInclVat, lang)}</dd>
               </div>
             </dl>
-            <Link to={path("checkout", lang)} className="mt-6 block text-center bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3.5">
+            <Link to={path("checkout", lang)} className="mt-6 block text-center bg-orange-500 hover:bg-orange-600 text-white text-base font-semibold py-3.5">
               {L(lang, "Gå til kassen", "Proceed to checkout")}
             </Link>
-            <Link to={path("quote", lang)} className="mt-3 block text-center border border-slate-900 font-semibold py-3.5 text-sm">
+            <Link to={path("quote", lang)} className="mt-3 block text-center border border-slate-900 font-semibold py-3.5 text-base">
               {L(lang, "Anmod om tilbud i stedet", "Request a quote instead")}
             </Link>
           </aside>

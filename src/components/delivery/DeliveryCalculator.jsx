@@ -15,7 +15,7 @@ const ACCESS_QUESTIONS = [
 
 export default function DeliveryCalculator({ lang, variant, quantity = 1, onChange, compact = false }) {
   const [form, setForm] = useState({
-    country: "DK", postcode: "", city: "", street: "", unloading: "", notes: "",
+    country: compact ? "DK" : "", postcode: "", city: "", street: "", unloading: "", notes: "",
     access: { truck_access: "yes", narrow_roads: "no", cables: "no", ground: "yes", behind: "no" },
   });
   const [result, setResult] = useState(null);
@@ -34,25 +34,41 @@ export default function DeliveryCalculator({ lang, variant, quantity = 1, onChan
   };
 
   return (
-    <form onSubmit={calculate} className="border border-slate-200 bg-slate-50/60 p-6">
+    <form onSubmit={calculate} className="customer-form border border-slate-300 bg-slate-50/60 p-6 text-slate-800">
       <div className="flex items-center gap-2">
         <Truck className="w-5 h-5 text-orange-500" />
         <h3 className="font-heading font-bold text-slate-900">{L(lang, "Beregn levering", "Calculate delivery")}</h3>
       </div>
-      <p className="mt-2 text-sm text-slate-600">
+      <p className="mt-2 text-base leading-6 text-slate-700">
         {L(lang,
           "Fragtprisen afhænger af postnummer, antal, containerens mål, adgangsforhold, aflæsningsmetode og underlag.",
           "Shipping depends on postcode, quantity, container dimensions, site access, unloading method and ground conditions.")}
       </p>
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
-        <label className="text-sm">
-          <span className="hjc-label block mb-1.5">{L(lang, "Land", "Country")}</span>
-          <select value={form.country} onChange={(e) => set({ country: e.target.value })} className="w-full border border-slate-300 px-3 py-2.5 bg-white">
-            <option value="DK">{L(lang, "Danmark", "Denmark")}</option>
-            <option value="OTHER">{L(lang, "Andet land", "Other country")}</option>
-          </select>
-        </label>
+        {compact ? (
+          <div className="text-sm">
+            <span className="hjc-label block mb-1.5">{L(lang, "Leveringsland", "Delivery country")}</span>
+            <p className="w-full border border-slate-200 px-3 py-2.5 bg-slate-100 text-slate-700">
+              {L(lang, "Danmark", "Denmark")}
+            </p>
+          </div>
+        ) : (
+          <label className="text-sm">
+            <span className="hjc-label block mb-1.5">{L(lang, "Land", "Country")}</span>
+            <input
+              value={form.country}
+              onChange={(e) => set({ country: e.target.value })}
+              className="w-full border border-slate-300 px-3 py-2.5 bg-white"
+              placeholder={L(lang, "Skriv eller vælg land", "Type or select country")}
+              autoComplete="country-name"
+              list={`delivery-country-options-${lang}`}
+            />
+            <datalist id={`delivery-country-options-${lang}`}>
+              <option value={L(lang, "Danmark", "Denmark")} />
+            </datalist>
+          </label>
+        )}
         <label className="text-sm">
           <span className="hjc-label block mb-1.5">{L(lang, "Postnummer", "Postcode")}</span>
           <input inputMode="numeric" value={form.postcode} onChange={(e) => set({ postcode: e.target.value })}
@@ -85,12 +101,12 @@ export default function DeliveryCalculator({ lang, variant, quantity = 1, onChan
         <legend className="hjc-label mb-3">{L(lang, "Adgangsforhold", "Site access")}</legend>
         <ul className="space-y-2">
           {ACCESS_QUESTIONS.map((q) => (
-            <li key={q.key} className="flex flex-wrap items-center justify-between gap-3 text-sm bg-white border border-slate-200 px-3 py-2">
+            <li key={q.key} className="flex flex-wrap items-center justify-between gap-3 text-base bg-white border border-slate-300 px-3 py-2.5">
               <span className="text-slate-700">{lang === "en" ? q.en : q.da}</span>
               <span className="flex gap-1">
                 {["yes", "no"].map((v) => (
                   <button key={v} type="button" onClick={() => setAccess(q.key, v)} aria-pressed={form.access[q.key] === v}
-                    className={`px-3 py-1 hjc-mono text-[11px] border ${form.access[q.key] === v ? "bg-slate-900 text-white border-slate-900" : "border-slate-300 text-slate-600"}`}>
+                    className={`px-3 py-1.5 text-sm font-semibold border ${form.access[q.key] === v ? "bg-slate-900 text-white border-slate-900" : "border-slate-400 text-slate-700"}`}>
                     {v === "yes" ? L(lang, "JA", "YES") : L(lang, "NEJ", "NO")}
                   </button>
                 ))}
@@ -110,11 +126,11 @@ export default function DeliveryCalculator({ lang, variant, quantity = 1, onChan
       </button>
 
       {result && result.calculable && (
-        <div className="mt-5 border border-emerald-200 bg-emerald-50 p-4 text-sm">
+        <div className="mt-5 border border-emerald-200 bg-emerald-50 p-4 text-base">
           <p className="flex items-center gap-2 font-semibold text-emerald-900">
             <Check className="w-4 h-4" /> {L(lang, "Fragt beregnet", "Shipping calculated")} — {result.zone}
           </p>
-          <dl className="mt-3 space-y-1 hjc-mono text-[12px] text-emerald-900">
+          <dl className="mt-3 space-y-1 text-base text-emerald-900">
             <div className="flex justify-between"><dt>{L(lang, "Levering", "Delivery")}</dt><dd>{formatDKK(result.delivery_cost, lang)}</dd></div>
             <div className="flex justify-between"><dt>{L(lang, "Aflæsning", "Unloading")}</dt><dd>{formatDKK(result.unloading_cost, lang)}</dd></div>
             <div className="flex justify-between font-semibold"><dt>{L(lang, "I alt transport", "Transport total")}</dt><dd>{formatDKK(result.total, lang)}</dd></div>
@@ -123,7 +139,7 @@ export default function DeliveryCalculator({ lang, variant, quantity = 1, onChan
       )}
 
       {result && !result.calculable && (
-        <div className="mt-5 border border-amber-300 bg-amber-50 p-4 text-sm">
+        <div className="mt-5 border border-amber-300 bg-amber-50 p-4 text-base leading-6">
           <p className="flex items-center gap-2 font-semibold text-amber-900">
             <AlertTriangle className="w-4 h-4" /> {L(lang, "Fragt kan ikke beregnes automatisk", "Shipping cannot be calculated automatically")}
           </p>

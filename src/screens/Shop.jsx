@@ -36,8 +36,8 @@ export default function Shop() {
         <h1 className="font-heading text-3xl md:text-4xl font-extrabold">{L(lang, "Alle containere", "All containers")}</h1>
         <p className="mt-4 text-slate-600 leading-relaxed">
           {L(lang,
-            "Her finder du vores standard-, High Cube- og Open Side-containere i 10, 20 og 40 fod. Hver variant har egen SKU med mål, vægt, stand og pris i DKK, så du kan sammenligne før du bestiller. Varianter uden fast pris kan sendes til tilbud.",
-            "Here you will find our Standard, High Cube and Open Side containers in 10ft, 20ft and 40ft. Every variant has its own SKU with dimensions, weight, condition and price in DKK so you can compare before ordering. Variants without a fixed price can be sent to quotation.")}
+            "Standard-, High Cube- og Open Side-containere er samlet efter størrelse, så du nemt kan sammenligne versioner, stand og farve. Kontor-, opbevarings-, isolerede og tunnelcontainere vises som selvstændige produkter under deres egen containertype.",
+            "Standard, High Cube and Open Side containers are grouped by size so you can compare versions, conditions and colours. Office, Storage, Insulated and Tunnel containers are listed as standalone products within their own container type.")}
         </p>
       </header>
 
@@ -45,7 +45,7 @@ export default function Shop() {
         {isLoading ? (
           <p className="hjc-mono text-sm text-slate-500">{L(lang, "Indlæser katalog…", "Loading catalogue…")}</p>
         ) : (
-          <CatalogView lang={lang} products={products} variants={variants} initialQuery={q} />
+          <CatalogView lang={lang} products={products} variants={variants} initialQuery={q} groupBySize />
         )}
       </div>
     </div>

@@ -1,14 +1,39 @@
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { DEMO_PRODUCTS, DEMO_VARIANTS } from "@/data/demoCatalog";
+
+export function isSupportedVariant(variant) {
+  return !(variant.size === "10ft" && variant.product_key === "open_side");
+}
 
 export function useCatalog() {
   const products = useQuery({
     queryKey: ["products"],
-    queryFn: () => base44.entities.Product.filter({ status: "published" }, "sort_order", 200),
+    initialData: DEMO_PRODUCTS,
+    queryFn: async () => {
+      try {
+        const records = await base44.entities.Product.filter({ status: "published" }, "sort_order", 200);
+        if (!records.length) return DEMO_PRODUCTS;
+        const remoteCategories = new Set(records.map((product) => product.category));
+        const fallbackCategories = DEMO_PRODUCTS.filter((product) => !remoteCategories.has(product.category));
+        return [...records, ...fallbackCategories];
+      } catch {
+        return DEMO_PRODUCTS;
+      }
+    },
   });
   const variants = useQuery({
     queryKey: ["variants"],
-    queryFn: () => base44.entities.Variant.filter({ status: "published" }, "sku", 500),
+    initialData: DEMO_VARIANTS,
+    queryFn: async () => {
+      try {
+        const records = await base44.entities.Variant.filter({ status: "published" }, "sku", 500);
+        const supported = records.filter(isSupportedVariant);
+        return supported.length ? supported : DEMO_VARIANTS;
+      } catch {
+        return DEMO_VARIANTS;
+      }
+    },
   });
   return {
     products: products.data || [],

@@ -1,43 +1,72 @@
 import React from "react";
 import { CONDITION_LABEL, L, pick } from "@/lib/i18n";
-import { SIZE_ORDER } from "@/lib/routes";
+import { CATEGORY_LABEL } from "@/lib/routes";
 
-const SIZE_BAR = { "10ft": "w-6", "20ft": "w-10", "40ft": "w-16" };
+const TYPE_ORDER = { standard: 1, high_cube: 2, open_side: 3 };
+const CONDITION_ORDER = { new: 1, used: 2 };
+const RAL_SWATCHES = {
+  "RAL 5010": "#0e294b",
+  "RAL 7016": "#383e42",
+};
 
-export default function VariantSelector({ variants, selected, onSelect, lang }) {
-  const sizes = [...new Set(variants.map((v) => v.size))].sort((a, b) => SIZE_ORDER[a] - SIZE_ORDER[b]);
-  const conditions = [...new Set(variants.filter((v) => v.size === selected.size).map((v) => v.condition))];
-  const colors = variants.filter((v) => v.size === selected.size && v.condition === selected.condition);
+function colorKey(variant, lang) {
+  return `${pick(variant, "color", lang)}|${variant.ral_code || ""}`;
+}
+
+function swatchColor(variant, lang) {
+  const ralCode = variant.ral_code?.trim().toUpperCase();
+  if (RAL_SWATCHES[ralCode]) return RAL_SWATCHES[ralCode];
+
+  const colorName = pick(variant, "color", lang).toLowerCase();
+  if (colorName.includes("blue") || colorName.includes("blå")) return "#1d4f91";
+  if (colorName.includes("grey") || colorName.includes("gray") || colorName.includes("grå")) return "#52575c";
+  return "#cbd5e1";
+}
+
+export default function VariantSelector({ variants, products, selected, onSelect, lang }) {
+  const sizeVariants = variants.filter((variant) => variant.size === selected.size);
+  const productByKey = Object.fromEntries(products.map((product) => [product.key, product]));
+  const productKeys = [...new Set(sizeVariants.map((variant) => variant.product_key))]
+    .sort((a, b) => (TYPE_ORDER[a] || 99) - (TYPE_ORDER[b] || 99));
+  const typeVariants = sizeVariants.filter((variant) => variant.product_key === selected.product_key);
+  const conditions = [...new Set(typeVariants.map((variant) => variant.condition))]
+    .sort((a, b) => (CONDITION_ORDER[a] || 99) - (CONDITION_ORDER[b] || 99));
+  const conditionVariants = typeVariants.filter((variant) => variant.condition === selected.condition);
+  const colors = [...new Map(conditionVariants.map((variant) => [colorKey(variant, lang), variant])).values()];
 
   const pickVariant = (patch) => {
+    const targetProductKey = patch.product_key ?? selected.product_key;
+    const targetTypeVariants = sizeVariants.filter((variant) => variant.product_key === targetProductKey);
+    const preferredCondition = patch.condition ?? selected.condition;
+    const matchingCondition = targetTypeVariants.filter((variant) => variant.condition === preferredCondition);
+    const candidates = matchingCondition.length ? matchingCondition : targetTypeVariants;
+    const preferredColor = patch.color ?? colorKey(selected, lang);
     const next =
-      variants.find((v) => v.size === (patch.size ?? selected.size) && v.condition === (patch.condition ?? selected.condition) && (patch.sku ? v.sku === patch.sku : true)) ||
-      variants.find((v) => v.size === (patch.size ?? selected.size));
+      candidates.find((variant) => colorKey(variant, lang) === preferredColor) ||
+      candidates.find((variant) => variant.availability === "in_stock") ||
+      candidates[0];
     if (next) onSelect(next);
   };
-
-  const isAvailable = (v) => v && v.availability !== "out_of_stock";
 
   return (
     <div className="space-y-6">
       <fieldset>
-        <legend className="hjc-label mb-3">{L(lang, "Størrelse", "Size")}</legend>
+        <legend className="hjc-label mb-3">{L(lang, "Containertype og højde", "Container type and height")}</legend>
         <div className="flex flex-wrap gap-2">
-          {sizes.map((s) => {
-            const candidate = variants.find((v) => v.size === s);
-            const active = selected.size === s;
+          {productKeys.map((productKey) => {
+            const product = productByKey[productKey];
+            const active = selected.product_key === productKey;
             return (
               <button
-                key={s}
+                key={productKey}
                 type="button"
-                onClick={() => pickVariant({ size: s })}
+                onClick={() => pickVariant({ product_key: productKey })}
                 aria-pressed={active}
-                className={`px-4 py-3 border text-left min-w-[104px] transition-colors ${
+                className={`min-w-[132px] border px-4 py-3 text-left text-sm font-medium transition-colors ${
                   active ? "border-slate-900 bg-slate-900 text-white" : "border-slate-300 hover:border-slate-500"
-                } ${!isAvailable(candidate) ? "opacity-60" : ""}`}
+                }`}
               >
-                <span className="hjc-mono text-sm font-medium">{s}</span>
-                <span className={`block mt-2 h-1 ${SIZE_BAR[s]} ${active ? "bg-orange-400" : "bg-slate-300"}`} />
+                {CATEGORY_LABEL[product?.category]?.[lang] || pick(product, "name", lang) || productKey}
               </button>
             );
           })}
@@ -48,9 +77,7 @@ export default function VariantSelector({ variants, selected, onSelect, lang }) 
         <legend className="hjc-label mb-3">{L(lang, "Stand", "Condition")}</legend>
         <div className="flex flex-wrap gap-2">
           {conditions.map((c) => {
-            const candidate = variants.find((v) => v.size === selected.size && v.condition === c);
             const active = selected.condition === c;
-            const unavailable = !isAvailable(candidate);
             return (
               <button
                 key={c}
@@ -62,14 +89,13 @@ export default function VariantSelector({ variants, selected, onSelect, lang }) 
                 }`}
               >
                 {CONDITION_LABEL[c][lang]}
-                {unavailable && <span className="ml-2 hjc-mono text-[10px]">{L(lang, "ikke på lager", "out of stock")}</span>}
               </button>
             );
           })}
         </div>
       </fieldset>
 
-      {colors.length > 1 && (
+      {colors.length > 0 && (
         <fieldset>
           <legend className="hjc-label mb-3">{L(lang, "Farve", "Colour")}</legend>
           <div className="flex flex-wrap gap-2">
@@ -77,12 +103,19 @@ export default function VariantSelector({ variants, selected, onSelect, lang }) 
               <button
                 key={v.sku}
                 type="button"
-                onClick={() => onSelect(v)}
+                onClick={() => pickVariant({ color: colorKey(v, lang) })}
                 aria-pressed={selected.sku === v.sku}
-                className={`px-4 py-2.5 border text-sm ${selected.sku === v.sku ? "border-slate-900 bg-slate-900 text-white" : "border-slate-300 hover:border-slate-500"}`}
+                className={`inline-flex items-center gap-3 border px-4 py-2.5 text-left text-sm ${selected.sku === v.sku ? "border-slate-900 bg-slate-900 text-white" : "border-slate-300 hover:border-slate-500"}`}
               >
-                {pick(v, "color", lang) || L(lang, "Standard", "Standard")}
-                {v.ral_code && <span className="ml-2 hjc-mono text-[10px] opacity-70">{v.ral_code}</span>}
+                <span
+                  className="h-7 w-7 shrink-0 border border-white/50 shadow-[0_0_0_1px_rgba(15,23,42,0.2)]"
+                  style={{ backgroundColor: swatchColor(v, lang) }}
+                  aria-hidden="true"
+                />
+                <span>
+                  <span className="block font-medium">{pick(v, "color", lang) || L(lang, "Standard", "Standard")}</span>
+                  {v.ral_code && <span className="block hjc-mono text-[10px] opacity-70">{v.ral_code}</span>}
+                </span>
               </button>
             ))}
           </div>

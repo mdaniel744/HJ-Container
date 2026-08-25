@@ -11,7 +11,7 @@ export default function HowItWorks({ lang }) {
   return (
     <section className="bg-slate-900 text-white">
       <div className="mx-auto max-w-7xl px-5 py-20">
-        <p className="hjc-mono text-[11px] uppercase tracking-[0.18em] text-slate-400">{L(lang, "05 — Proces", "05 — Process")}</p>
+        <p className="hjc-section-tag">{L(lang, "Proces", "Process")}</p>
         <h2 className="mt-3 font-heading text-2xl md:text-3xl font-extrabold">{L(lang, "Sådan foregår bestillingen", "How ordering works")}</h2>
         <ol className="mt-10 grid gap-px bg-slate-700 sm:grid-cols-2 lg:grid-cols-3">
           {steps.map((s, i) => (

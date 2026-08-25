@@ -16,21 +16,21 @@ export default function About() {
     lang,
     title: L(lang, "Om HJ Container ApS | Containere i Danmark", "About HJ Container ApS | Containers in Denmark"),
     description: L(lang,
-      "HJ Container ApS i Horsens sælger standard-, High Cube- og Open Side-containere i 10, 20 og 40 fod til private og erhverv.",
-      "HJ Container ApS in Horsens, Denmark sells Standard, High Cube and Open Side containers in 10ft, 20ft and 40ft to private and business customers."),
+      "HJ Container ApS i Horsens sælger standard- og High Cube-containere i 10, 20 og 40 fod samt Open Side i 20 og 40 fod til private og erhverv.",
+      "HJ Container ApS in Horsens, Denmark sells Standard and High Cube containers in 10ft, 20ft and 40ft, plus Open Side containers in 20ft and 40ft, to private and business customers."),
     daPath: "/om-os", enPath: "/en/about-us",
     jsonLd: [breadcrumbJsonLd(crumbs.filter((c) => c.path)), { "@context": "https://schema.org", "@type": "AboutPage", name: "About HJ Container ApS", mainEntity: organizationJsonLd() }],
   });
 
   const sections = lang === "en"
     ? [
-        ["What we do", "HJ Container ApS sells shipping containers in Denmark. Our range covers Standard, High Cube and Open Side containers in 10ft, 20ft and 40ft, in new (One Trip) and used condition. Every variant is listed with its own SKU, dimensions, weight and condition so you know exactly what you are buying."],
+        ["What we do", "HJ Container ApS sells shipping containers in Denmark. Standard and High Cube models are available in 10ft, 20ft and 40ft, while Open Side models are available in 20ft and 40ft. We offer new (One Trip) and used condition. Every variant is listed with its own SKU, dimensions, weight and condition so you know exactly what you are buying."],
         ["Who we serve", "We supply both private customers who need secure storage on their own property and business customers who need containers for construction sites, workshops, storage and logistics. Business customers can order against invoice and add a purchase order reference at checkout."],
         ["How we select containers", "We describe each container by its documented properties rather than by general promises. Where CSC status or wind and watertight status is documented for a unit, we state it on the variant. Where information is not available, we leave the field out instead of guessing."],
         ["Ordering and quotations", "Variants with a fixed price, confirmed availability and a calculable delivery cost can be ordered directly on this website with payment by invoice or bank transfer. Multiple containers, restricted site access, special unloading or customised units are handled through a non-binding quote request so transport can be planned manually."],
       ]
     : [
-        ["Hvad vi laver", "HJ Container ApS sælger containere i Danmark. Vores udvalg dækker standard-, High Cube- og Open Side-containere i 10, 20 og 40 fod i ny (One Trip) og brugt stand. Hver variant er oprettet med egen SKU, mål, vægt og stand, så du ved præcis hvad du køber."],
+        ["Hvad vi laver", "HJ Container ApS sælger containere i Danmark. Standard- og High Cube-modeller tilbydes i 10, 20 og 40 fod, mens Open Side tilbydes i 20 og 40 fod. Vi har både ny (One Trip) og brugt stand. Hver variant er oprettet med egen SKU, mål, vægt og stand, så du ved præcis hvad du køber."],
         ["Hvem vi handler med", "Vi leverer både til private, der har brug for sikker opbevaring på egen grund, og til erhvervskunder, der bruger containere til byggepladser, værksteder, lager og logistik. Erhvervskunder kan bestille mod faktura og angive indkøbsordrereference i kassen."],
         ["Sådan udvælger vi containere", "Vi beskriver hver container ud fra dokumenterede egenskaber frem for generelle løfter. Hvor CSC-status eller vind- og vandtæt status er dokumenteret for en enhed, oplyser vi det på varianten. Hvor oplysningen ikke findes, udelader vi feltet i stedet for at gætte."],
         ["Bestilling og tilbud", "Varianter med fast pris, bekræftet tilgængelighed og beregnelig fragt kan bestilles direkte her på sitet med betaling via faktura eller bankoverførsel. Flere containere, begrænset adgang, særlig aflæsning eller tilpassede enheder håndteres gennem en ikke-bindende tilbudsforespørgsel, så transporten kan planlægges manuelt."],
@@ -46,9 +46,20 @@ export default function About() {
           "HJ Container ApS is a Danish container company based in Horsens. We sell containers for storage, construction and logistics with clear product information and prices in DKK.")}
       </p>
 
-      <div className="mt-10 border border-slate-200 overflow-hidden">
-        <Image src={MEDIA.lock} alt={L(lang, "Nærbillede af en containers låsemekanisme", "Close-up of a container locking mechanism")} className="w-full aspect-[21/9]" />
-      </div>
+      <figure className="mt-10 overflow-hidden border border-slate-200 bg-slate-50">
+        <Image
+          src={MEDIA.about_transport}
+          alt={L(lang,
+            "Kranbil læsser en rød skibscontainer på en fladbundet trailer",
+            "Crane truck loading a red shipping container onto a flatbed trailer")}
+          className="w-full aspect-[16/10]"
+        />
+        <figcaption className="border-t border-slate-200 px-5 py-3 text-sm text-slate-600">
+          {L(lang,
+            "Containertransport og kranløft planlægges efter containerens størrelse og forholdene på leveringsstedet.",
+            "Container transport and crane unloading are planned around the container size and the conditions at the delivery site.")}
+        </figcaption>
+      </figure>
 
       <div className="mt-12 grid gap-10 md:grid-cols-2">
         {sections.map(([title, text]) => (

@@ -7,6 +7,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { L, pick, useLang } from "@/lib/i18n";
 import { path } from "@/lib/routes";
 import { useSeo, breadcrumbJsonLd } from "@/lib/seo";
+import { applyFaqOverrides } from "@/lib/faqOverrides";
 
 const CATS = [
   ["products", "Produkter", "Products"],
@@ -26,10 +27,11 @@ export default function Faq() {
   const lang = useLang();
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("all");
-  const { data: faqs = [] } = useQuery({
+  const { data: remoteFaqs = [] } = useQuery({
     queryKey: ["faqs"],
     queryFn: () => base44.entities.Faq.filter({ published: true }, "sort_order", 100),
   });
+  const faqs = applyFaqOverrides(remoteFaqs);
 
   const filtered = useMemo(() => {
     let list = faqs;

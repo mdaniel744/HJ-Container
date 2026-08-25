@@ -1,5 +1,8 @@
 import { CONDITION_LABEL } from "@/lib/i18n";
 import { CATEGORY_LABEL } from "@/lib/routes";
+import { MERCHANT_RETURN_POLICY_LABEL, MERCHANT_SHIPPING_LABEL } from "@/lib/compliance";
+import { resolveCompliance } from "@/lib/compliance";
+import { maximumSingleContainerDeliveryCost } from "@/lib/delivery";
 
 const GOOGLE_CATEGORY = "Business & Industrial > Material Handling > Shipping Containers";
 
@@ -20,10 +23,12 @@ export function validateVariant(variant, product) {
   if (!variant.condition) issues.push("condition");
   if (variant.is_sample) issues.push("sample_data");
   if (variant.status !== "published") issues.push("not_published");
+  if (variant.size === "10ft" && product?.category === "open_side") issues.push("unsupported_configuration");
   return issues;
 }
 
-export function feedRow(variant, product, origin) {
+export function feedRow(variant, product, origin, settings = {}) {
+  const { handlingTime, transitTime } = resolveCompliance(settings);
   return {
     id: variant.sku,
     item_group_id: variant.item_group_id,
@@ -41,12 +46,22 @@ export function feedRow(variant, product, origin) {
     gtin: variant.gtin || "",
     product_type: `${CATEGORY_LABEL[product.category].da} > ${variant.size}`,
     google_product_category: GOOGLE_CATEGORY,
-    shipping: "DK:::0.00 DKK",
+    shipping_label: `${MERCHANT_SHIPPING_LABEL}-${variant.size.toUpperCase()}`,
+    shipping: handlingTime && transitTime ? {
+      country: "DK",
+      service: "Containertransport",
+      price: `${maximumSingleContainerDeliveryCost(variant.size)} DKK`,
+      min_handling_time: handlingTime[0],
+      max_handling_time: handlingTime[1],
+      min_transit_time: transitTime[0],
+      max_transit_time: transitTime[1],
+    } : null,
     shipping_weight: variant.tare_weight || "",
-    return_policy_label: "HJC-DK-RETUR",
+    return_policy_label: MERCHANT_RETURN_POLICY_LABEL,
     custom_label_0: variant.size,
     custom_label_1: variant.condition,
     custom_label_2: product.category,
+    custom_label_3: "DK-only",
   };
 }
 
@@ -55,11 +70,14 @@ const esc = (v) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").
 export function buildFeedXml(rows, origin) {
   const items = rows.map((r) => {
     const extra = (r.additional_image_link || []).map((i) => `      <g:additional_image_link>${esc(i)}</g:additional_image_link>`).join("\n");
+    const shipping = r.shipping
+      ? `      <g:shipping>\n${Object.entries(r.shipping).map(([key, value]) => `        <g:${key}>${esc(value)}</g:${key}>`).join("\n")}\n      </g:shipping>`
+      : "";
     const fields = Object.entries(r)
-      .filter(([k, v]) => k !== "additional_image_link" && v !== "" && v !== undefined && v !== null)
+      .filter(([k, v]) => !["additional_image_link", "shipping"].includes(k) && v !== "" && v !== undefined && v !== null)
       .map(([k, v]) => `      <g:${k}>${esc(v)}</g:${k}>`)
       .join("\n");
-    return `    <item>\n${fields}${extra ? `\n${extra}` : ""}\n    </item>`;
+    return `    <item>\n${fields}${shipping ? `\n${shipping}` : ""}${extra ? `\n${extra}` : ""}\n    </item>`;
   }).join("\n");
 
   return `<?xml version="1.0" encoding="UTF-8"?>
@@ -67,7 +85,7 @@ export function buildFeedXml(rows, origin) {
   <channel>
     <title>HJ Container ApS — Danmark</title>
     <link>${esc(origin)}</link>
-    <description>Containere til salg i Danmark. Priser i DKK inkl. moms.</description>
+    <description>Containere til salg med levering kun i Danmark. Priser i DKK inkl. moms. Fragt er ikke gratis og beregnes efter postnummer, størrelse, antal og aflæsning.</description>
 ${items}
   </channel>
 </rss>`;

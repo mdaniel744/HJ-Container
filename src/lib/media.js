@@ -5,4 +5,5 @@ export const MEDIA = {
   open_side: "https://media.base44.com/images/public/6a6b64082a3e26226bfba099/58032aff6_generated_456c77d2.png",
   crane: "https://media.base44.com/images/public/6a6b64082a3e26226bfba099/b33dffb45_generated_0a65fe98.png",
   lock: "https://media.base44.com/images/public/6a6b64082a3e26226bfba099/7ade375ee_generated_e502618b.png",
+  about_transport: "/images/about/flachbett-trailer.jpg",
 };

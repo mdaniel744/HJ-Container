@@ -13,7 +13,7 @@ const POINTS = [
 export default function TrustPoints({ lang }) {
   return (
     <section className="mx-auto max-w-7xl px-5 py-20">
-      <p className="hjc-label">{L(lang, "04 — Hvorfor os", "04 — Why us")}</p>
+      <p className="hjc-section-tag">{L(lang, "Hvorfor os", "Why choose us")}</p>
       <h2 className="mt-3 font-heading text-2xl md:text-3xl font-extrabold">
         {L(lang, "Hvorfor vælge HJ Container ApS", "Why choose HJ Container ApS")}
       </h2>

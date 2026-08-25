@@ -1,7 +1,7 @@
 import React from "react";
 import { L } from "@/lib/i18n";
-import { CATEGORY_LABEL } from "@/lib/routes";
 import { CONDITION_LABEL } from "@/lib/i18n";
+import { CONTAINER_TYPES } from "@/lib/containerTypes";
 
 function Group({ title, children }) {
   return (
@@ -28,7 +28,8 @@ export default function ShopFilters({ lang, filters, setFilters, colors, maxPric
   return (
     <div>
       <Group title={L(lang, "Containertype", "Container type")}>
-        {["standard", "high_cube", "open_side"].map((c) => check("category", c, CATEGORY_LABEL[c][lang]))}
+        {CONTAINER_TYPES
+          .map((type) => check("category", type.key, type.label[lang]))}
       </Group>
       <Group title={L(lang, "Størrelse", "Size")}>
         {["10ft", "20ft", "40ft"].map((s) => check("size", s, s))}

@@ -14,23 +14,20 @@ import { useLang, L, pick } from "@/lib/i18n";
 import { useCatalog } from "@/lib/useCatalog";
 import { useSeo, organizationJsonLd } from "@/lib/seo";
 import { path } from "@/lib/routes";
+import { applyFaqOverrides } from "@/lib/faqOverrides";
 
 export default function Home() {
   const lang = useLang();
   const origin = typeof window === "undefined" ? "" : window.location.origin;
   const { products, variants } = useCatalog();
-  const { data: faqs = [] } = useQuery({
+  const { data: remoteFaqs = [] } = useQuery({
     queryKey: ["faqs-home"],
     queryFn: () => base44.entities.Faq.filter({ published: true, show_on_home: true }, "sort_order", 8),
   });
+  const faqs = applyFaqOverrides(remoteFaqs);
   const { data: policies = [] } = useQuery({
     queryKey: ["policies"],
     queryFn: () => base44.entities.PolicyPage.filter({ published: true }, "sort_order", 50),
-  });
-
-  const counts = {};
-  products.forEach((p) => {
-    counts[p.category] = (counts[p.category] || 0) + variants.filter((v) => v.product_key === p.key).length;
   });
 
   const deliveryPolicy = policies.find((p) => p.slug_da === "levering-og-fragt");
@@ -41,8 +38,8 @@ export default function Home() {
       "Køb nye og brugte containere i Danmark | HJ Container ApS",
       "Buy new and used shipping containers in Denmark | HJ Container ApS"),
     description: L(lang,
-      "Standard-, High Cube- og Open Side-containere i 10, 20 og 40 fod med tydelige priser i DKK. Bestil direkte eller anmod om et tilbud hos HJ Container ApS i Horsens.",
-      "Standard, High Cube and Open Side containers in 10ft, 20ft and 40ft with clear prices in DKK. Order directly or request a quote from HJ Container ApS in Horsens, Denmark."),
+      "Køb Standard-, High Cube- og Open Side-containere online, eller få tilbud på opbevarings-, kontor-, isolerede og ombyggede containerløsninger.",
+      "Buy Standard, High Cube and Open Side containers online, or request a quote for storage, office, insulated and converted container solutions."),
     daPath: "/", enPath: "/en",
     jsonLd: [
       organizationJsonLd(),
@@ -55,7 +52,7 @@ export default function Home() {
   return (
     <>
       <Hero lang={lang} />
-      <CategoryCards lang={lang} counts={counts} />
+      <CategoryCards lang={lang} />
       <SizeCards lang={lang} />
       <FeaturedProducts lang={lang} products={products} variants={variants} />
       <TrustPoints lang={lang} />

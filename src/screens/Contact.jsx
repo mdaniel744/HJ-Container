@@ -120,7 +120,7 @@ export default function Contact() {
               </p>
             </div>
           ) : (
-            <form onSubmit={submit} className="border border-slate-200 p-6 space-y-4">
+            <form onSubmit={submit} className="customer-form border border-slate-300 p-6 space-y-4 text-slate-800">
               <h2 className="font-heading font-bold text-lg">{L(lang, "Skriv til os", "Send us a message")}</h2>
               <label className="block text-sm"><span className="hjc-label block mb-1.5">{L(lang, "Henvendelsestype", "Enquiry type")}</span>
                 <select className={FIELD} value={form.category} onChange={(e) => set({ category: e.target.value })}>

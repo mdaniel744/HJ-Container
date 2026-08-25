@@ -5,10 +5,12 @@ import ShopFilters from "./ShopFilters";
 import ProductGrid from "./ProductGrid";
 import { CONDITION_LABEL, L, pick } from "@/lib/i18n";
 import { CATEGORY_LABEL, SIZE_ORDER, path } from "@/lib/routes";
+import { CONTAINER_TYPES } from "@/lib/containerTypes";
+import { standaloneVariantOf } from "@/data/demoCatalog";
 
 const EMPTY = { category: [], size: [], condition: [], color: [], availability: [], flags: [], maxPrice: null };
 
-export default function CatalogView({ lang, products, variants, lockedFilter, initialQuery = "" }) {
+export default function CatalogView({ lang, products, variants, lockedFilter, initialQuery = "", groupBySize = false }) {
   const [filters, setFilters] = useState({ ...EMPTY });
   const [sort, setSort] = useState("recommended");
   const [q, setQ] = useState(initialQuery);
@@ -18,10 +20,15 @@ export default function CatalogView({ lang, products, variants, lockedFilter, in
 
   const productByKey = useMemo(() => Object.fromEntries(products.map((p) => [p.key, p])), [products]);
 
-  const allRows = useMemo(
-    () => variants.map((v) => ({ variant: v, product: productByKey[v.product_key] })).filter((r) => r.product),
-    [variants, productByKey]
-  );
+  const allRows = useMemo(() => {
+    const variableRows = variants
+      .map((variant) => ({ variant, product: productByKey[variant.product_key], standalone: false }))
+      .filter((row) => row.product && row.product.catalog_mode !== "standalone");
+    const standaloneRows = products
+      .filter((product) => product.catalog_mode === "standalone")
+      .map((product) => ({ product, variant: standaloneVariantOf(product), standalone: true }));
+    return [...variableRows, ...standaloneRows];
+  }, [variants, products, productByKey]);
 
   const colors = useMemo(
     () => [...new Set(allRows.map((r) => pick(r.variant, "color", lang)).filter(Boolean))],
@@ -64,8 +71,39 @@ export default function CatalogView({ lang, products, variants, lockedFilter, in
     return [...list].sort(sorters[sort] || sorters.recommended);
   }, [allRows, filters, q, sort, lang, lockedFilter]);
 
+  const displayRows = useMemo(() => {
+    if (!groupBySize) return rows;
+
+    const groups = new Map();
+    rows.filter((row) => !row.standalone).forEach((row) => {
+      const options = groups.get(row.variant.size) || [];
+      options.push(row);
+      groups.set(row.variant.size, options);
+    });
+
+    const variableGroups = [...groups.entries()].map(([size, options]) => {
+      const representative =
+        options.find(({ product, variant }) => product.key === "standard" && variant.condition === "new") ||
+        options.find(({ variant }) => variant.availability === "in_stock" && variant.direct_order) ||
+        options[0];
+      return { ...representative, size, options };
+    });
+    return [...variableGroups, ...rows.filter((row) => row.standalone)];
+  }, [rows, groupBySize]);
+
+  const selectedSpecialtyTypes = filters.category
+    .map((key) => CONTAINER_TYPES.find((type) => type.key === key))
+    .filter((type) => type?.mode === "service");
+
+  const standaloneCount = displayRows.filter((row) => row.standalone).length;
+  const sizeGroupCount = displayRows.filter((row) => row.options).length;
+
   const chips = [
-    ...filters.category.map((c) => ({ key: "category", value: c, label: CATEGORY_LABEL[c][lang] })),
+    ...filters.category.map((c) => ({
+      key: "category",
+      value: c,
+      label: CONTAINER_TYPES.find((type) => type.key === c)?.label[lang] || CATEGORY_LABEL[c]?.[lang] || c,
+    })),
     ...filters.size.map((s) => ({ key: "size", value: s, label: s })),
     ...filters.condition.map((c) => ({ key: "condition", value: c, label: CONDITION_LABEL[c][lang] })),
     ...filters.color.map((c) => ({ key: "color", value: c, label: c })),
@@ -119,7 +157,13 @@ export default function CatalogView({ lang, products, variants, lockedFilter, in
 
         <div className="flex flex-wrap items-center gap-2 mt-4">
           <p className="hjc-mono text-[11px] text-slate-500 mr-2">
-            {rows.length} {L(lang, "varianter", "variants")}
+            {groupBySize
+              ? L(
+                lang,
+                `${sizeGroupCount} størrelser · ${standaloneCount} specialprodukter · ${rows.length} muligheder`,
+                `${sizeGroupCount} sizes · ${standaloneCount} specialist products · ${rows.length} options`
+              )
+              : `${rows.length} ${L(lang, "varianter", "variants")}`}
           </p>
           {chips.map((c) => (
             <button key={c.key + c.value} onClick={() => removeChip(c)}
@@ -137,24 +181,38 @@ export default function CatalogView({ lang, products, variants, lockedFilter, in
         <div className="mt-6">
           {rows.length === 0 ? (
             <div className="border border-slate-200 p-10 text-center">
-              <p className="font-heading font-bold text-lg">{L(lang, "Ingen containere matcher dine filtre", "No containers match your filters")}</p>
+              <p className="font-heading font-bold text-lg">
+                {selectedSpecialtyTypes.length
+                  ? L(lang, "Denne containertype tilbydes efter forespørgsel", "This container type is available by request")
+                  : L(lang, "Ingen containere matcher dine filtre", "No containers match your filters")}
+              </p>
               <p className="mt-2 text-sm text-slate-600">
-                {L(lang, "Prøv at rydde filtrene, eller send en tilbudsforespørgsel — vi kan ofte skaffe en specifik variant.",
-                  "Try clearing the filters, or send a quote request — we can often source a specific variant.")}
+                {selectedSpecialtyTypes.length
+                  ? L(lang,
+                    "Send os størrelse, stand og leveringsoplysninger, så sammensætter vi et individuelt tilbud.",
+                    "Send us the size, condition and delivery details, and we will prepare a tailored quote.")
+                  : L(lang,
+                    "Prøv at rydde filtrene, eller send en tilbudsforespørgsel — vi kan ofte skaffe en specifik variant.",
+                    "Try clearing the filters, or send a quote request — we can often source a specific variant.")}
               </p>
               <div className="mt-6 flex flex-wrap gap-3 justify-center">
                 <button onClick={() => { setFilters({ ...EMPTY }); setQ(""); }} className="bg-slate-900 text-white font-semibold px-5 py-3 text-sm">
                   {L(lang, "Ryd filtre", "Clear filters")}
                 </button>
-                <Link to={path("quote", lang)} className="border border-slate-900 font-semibold px-5 py-3 text-sm">
+                <Link
+                  to={selectedSpecialtyTypes.length
+                    ? `${path("quote", lang)}?type=${selectedSpecialtyTypes[0].key}`
+                    : path("quote", lang)}
+                  className="border border-slate-900 font-semibold px-5 py-3 text-sm"
+                >
                   {L(lang, "Anmod om tilbud", "Request a quote")}
                 </Link>
               </div>
             </div>
           ) : (
             <>
-              <ProductGrid rows={rows.slice(0, limit)} lang={lang} view={view} />
-              {rows.length > limit && (
+              <ProductGrid rows={displayRows.slice(0, limit)} lang={lang} view={view} />
+              {displayRows.length > limit && (
                 <div className="mt-10 text-center">
                   <button onClick={() => setLimit((l) => l + 12)} className="border border-slate-900 font-semibold px-7 py-3.5 text-sm hover:bg-slate-50">
                     {L(lang, "Vis flere containere", "Load more containers")}

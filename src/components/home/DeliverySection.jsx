@@ -16,12 +16,12 @@ export default function DeliverySection({ lang, deliveryPolicySlug }) {
         <Image src={MEDIA.crane} alt={L(lang, "Kranbil løfter en container på plads på et leveringssted", "Crane truck lifting a container into place at a delivery site")} className="w-full aspect-[16/10]" />
       </div>
       <div>
-        <p className="hjc-label">{L(lang, "06 — Levering", "06 — Delivery")}</p>
+        <p className="hjc-section-tag">{L(lang, "Levering", "Delivery")}</p>
         <h2 className="mt-3 font-heading text-2xl md:text-3xl font-extrabold">{L(lang, "Levering og aflæsning", "Delivery and unloading")}</h2>
         <p className="mt-4 text-slate-600 leading-relaxed">
           {L(lang,
-            "Containertransport prissættes individuelt, fordi den afhænger af flere forhold på leveringsstedet. Vi oplyser først en fragtpris, når den kan beregnes ud fra dine oplysninger.",
-            "Container transport is priced individually because it depends on several conditions at the delivery site. We only state a shipping price once it can be calculated from your information.")}
+            "Til direkte ordrer beregnes fragten ud fra leveringssted, antal, containerens mål og aflæsningsmetode. Hvis adgang eller underlag kræver særlig planlægning, giver vi i stedet et individuelt tilbud.",
+            "For direct orders, shipping is calculated from the delivery location, quantity, container dimensions and unloading method. If access or ground conditions require special planning, we provide an individual quotation instead.")}
         </p>
         <ul className="mt-6 grid gap-2 sm:grid-cols-2">
           {factors.map((f) => (

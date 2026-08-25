@@ -20,7 +20,7 @@ export default function FeaturedProducts({ lang, products, variants }) {
     <section className="mx-auto max-w-7xl px-5 py-20">
       <div className="flex flex-wrap items-end justify-between gap-4 border-b border-slate-200 pb-6">
         <div>
-          <p className="hjc-label">{L(lang, "03 — Udvalgte", "03 — Featured")}</p>
+          <p className="hjc-section-tag">{L(lang, "Udvalgte", "Featured")}</p>
           <h2 className="mt-3 font-heading text-2xl md:text-3xl font-extrabold">{L(lang, "Udvalgte containere", "Featured containers")}</h2>
         </div>
         <Link to={path("shop", lang)} className="text-sm font-semibold text-slate-900 underline underline-offset-4">

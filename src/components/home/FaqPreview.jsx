@@ -9,7 +9,7 @@ export default function FaqPreview({ lang, faqs }) {
   return (
     <section className="bg-slate-50 border-y border-slate-200">
       <div className="mx-auto max-w-4xl px-5 py-20">
-        <p className="hjc-label">{L(lang, "07 — FAQ", "07 — FAQ")}</p>
+        <p className="hjc-section-tag">FAQ</p>
         <h2 className="mt-3 font-heading text-2xl md:text-3xl font-extrabold">
           {L(lang, "Ofte stillede spørgsmål", "Frequently asked questions")}
         </h2>

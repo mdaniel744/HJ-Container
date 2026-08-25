@@ -15,7 +15,7 @@ export default function SizeCards({ lang }) {
   return (
     <section className="bg-slate-50 border-y border-slate-200">
       <div className="mx-auto max-w-7xl px-5 py-20">
-        <p className="hjc-label">{L(lang, "02 — Størrelser", "02 — Sizes")}</p>
+        <p className="hjc-section-tag">{L(lang, "Størrelser", "Sizes")}</p>
         <h2 className="mt-3 font-heading text-2xl md:text-3xl font-extrabold">{L(lang, "Shop efter størrelse", "Shop by size")}</h2>
         <div className="mt-10 grid gap-6 md:grid-cols-3">
           {sizes.map((s) => (

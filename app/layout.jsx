@@ -3,7 +3,7 @@ import Script from "next/script";
 import Providers from "./providers";
 
 const description =
-  "Standard, High Cube and Open Side containers in 10ft, 20ft and 40ft from HJ Container ApS.";
+  "Standard and High Cube containers in 10ft, 20ft and 40ft, plus Open Side containers in 20ft and 40ft, from HJ Container ApS.";
 
 export const metadata = {
   title: {

@@ -4,6 +4,13 @@ The storefront runs on Next.js 16 with the App Router. Base44 remains the
 application backend for catalogue data, settings, authentication, orders,
 quotes, uploads, and administrative content.
 
+Until the existing HJ Container dashboard database is connected to the
+storefront product tables, the shop uses `src/data/demoCatalog.js` as an
+immediate fallback. The fallback contains three variable product families,
+thirteen valid size/condition variants, and four standalone specialist
+products. It is automatically replaced by published remote catalogue records
+when they are available.
+
 ## Requirements
 
 - Node.js 20.9 or newer
@@ -60,7 +67,6 @@ storefronts, including:
 - `/containere/[slug]` and `/en/containers/[slug]`
 - `/produkt/[slug]` and `/en/product/[slug]`
 - cart, checkout, quote, content, guide, policy, and confirmation routes
-- `/admin`
 - `/login`, `/register`, `/forgot-password`, and `/reset-password`
 
 The Base44 site host is SPA-oriented. Deploy this server-rendered Next.js app

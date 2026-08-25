@@ -37,6 +37,24 @@
     "crane_truck_fee": {
       "type": "number",
       "default": 1500
+    },
+    "denmark_handling_min_business_days": {
+      "type": "number"
+    },
+    "denmark_handling_max_business_days": {
+      "type": "number"
+    },
+    "denmark_transit_min_business_days": {
+      "type": "number"
+    },
+    "denmark_transit_max_business_days": {
+      "type": "number"
+    },
+    "consumer_return_transport_max_dkk": {
+      "type": "number"
+    },
+    "payment_deadline_days": {
+      "type": "number"
     }
   }
 }

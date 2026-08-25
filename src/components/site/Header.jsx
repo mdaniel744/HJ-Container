@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import Image from "next/image";
 import { Link, useNavigate } from "@/lib/next-router";
 import { Menu, Search, ShoppingCart, X } from "lucide-react";
 import { useLang, L } from "@/lib/i18n";
@@ -38,9 +39,17 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-slate-200">
       <div className={`mx-auto max-w-7xl px-5 flex items-center gap-6 transition-all ${compact ? "h-14" : "h-20"}`}>
-        <Link to={path("home", lang)} className="flex items-baseline gap-2 shrink-0">
-          <span className="font-heading font-extrabold tracking-tight text-slate-900 text-xl">HJ CONTAINER</span>
-          <span className="hjc-mono text-[10px] text-slate-400 hidden sm:inline">ApS</span>
+        <Link to={path("home", lang)} className="flex items-center shrink-0" aria-label={L(lang, "HJ Containers — Forside", "HJ Containers — Home")}>
+          <Image
+            src="/brand/hj-containers-logo.png"
+            alt="HJ Containers"
+            width={1400}
+            height={1050}
+            priority
+            unoptimized
+            sizes="(max-width: 640px) 64px, 86px"
+            className={`w-auto object-contain transition-all duration-200 ${compact ? "h-11" : "h-16"}`}
+          />
         </Link>
 
         <nav className="hidden lg:flex items-center gap-7 ml-4" aria-label={L(lang, "Hovednavigation", "Main navigation")}>
@@ -78,7 +87,14 @@ export default function Header() {
           >
             {L(lang, "Få et tilbud", "Request a Quote")}
           </Link>
-          <button onClick={() => setMenuOpen(true)} className="lg:hidden p-2 text-slate-700" aria-label={L(lang, "Åbn menu", "Open menu")}>
+          <button
+            type="button"
+            onClick={() => setMenuOpen(true)}
+            className="inline-flex h-11 w-11 items-center justify-center text-slate-700 lg:hidden"
+            aria-label={L(lang, "Åbn menu", "Open menu")}
+            aria-expanded={menuOpen}
+            aria-controls="mobile-menu"
+          >
             <Menu className="w-6 h-6" />
           </button>
         </div>

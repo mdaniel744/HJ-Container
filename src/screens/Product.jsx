@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "@/lib/next-router";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Check, Mail, Minus, Plus } from "lucide-react";
+import { Mail, Minus, Plus } from "lucide-react";
 import Breadcrumbs from "@/components/site/Breadcrumbs";
 import PageNotFoundContent from "@/components/site/PageNotFoundContent";
 import Gallery from "@/components/product/Gallery";
@@ -15,10 +15,12 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { CONDITION_LABEL, L, pick, useLang } from "@/lib/i18n";
 import { CATEGORY_LABEL, COLLECTIONS, path } from "@/lib/routes";
 import { useCatalog, startingVariant } from "@/lib/useCatalog";
+import { standaloneVariantOf } from "@/data/demoCatalog";
 import { useCart } from "@/lib/CartContext";
 import { useSeo, breadcrumbJsonLd, organizationJsonLd } from "@/lib/seo";
 import { useRegisterAltPath } from "@/lib/AltPath";
 import { GUIDES } from "@/lib/guides";
+import { applyFaqOverrides } from "@/lib/faqOverrides";
 
 const SCHEMA_AVAIL = { in_stock: "InStock", out_of_stock: "OutOfStock", on_request: "PreOrder", backorder: "BackOrder" };
 
@@ -33,37 +35,49 @@ export default function Product() {
   const [selected, setSelected] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [delivery, setDelivery] = useState(null);
-  const [added, setAdded] = useState(false);
 
   const product = products.find((p) => p.slug_da === slug || p.slug_en === slug);
+  const isStandalone = product?.catalog_mode === "standalone";
+  const standaloneVariant = useMemo(() => standaloneVariantOf(product), [product]);
   const myVariants = useMemo(
-    () => (product ? variants.filter((v) => v.product_key === product.key) : []),
-    [product, variants]
+    () => (product && !isStandalone ? variants.filter((v) => v.product_key === product.key) : []),
+    [product, variants, isStandalone]
   );
 
   const requestedSku = searchParams.get("variant");
 
   useEffect(() => {
+    if (standaloneVariant) {
+      setSelected(standaloneVariant);
+      return;
+    }
     if (!myVariants.length) return;
     const match = myVariants.find((v) => v.sku === requestedSku);
     setSelected(match || startingVariant(myVariants));
-  }, [myVariants.length, requestedSku, product?.key]);
+  }, [myVariants, requestedSku, product?.key, standaloneVariant]);
 
   const selectVariant = (v) => {
-    setSelected(v);
+    const targetProduct = products.find((candidate) => candidate.key === v.product_key);
+    if (!targetProduct) return;
+
+    if (targetProduct.key === product.key) setSelected(v);
     setDelivery(null);
-    navigate(`${pathname}?variant=${v.sku}`, { replace: true });
+    navigate(`${path("product", lang, pick(targetProduct, "slug", lang))}?variant=${v.sku}`, { replace: true });
   };
 
-  const { data: faqs = [] } = useQuery({
+  const { data: remoteFaqs = [] } = useQuery({
     queryKey: ["faqs-product"],
     queryFn: () => base44.entities.Faq.filter({ published: true }, "sort_order", 60),
   });
+  const faqs = applyFaqOverrides(remoteFaqs);
 
-  useRegisterAltPath(product ? { da: path("product", "da", product.slug_da) + (selected ? `?variant=${selected.sku}` : ""), en: path("product", "en", product.slug_en) + (selected ? `?variant=${selected.sku}` : "") } : null);
+  useRegisterAltPath(product ? {
+    da: path("product", "da", product.slug_da) + (!isStandalone && selected ? `?variant=${selected.sku}` : ""),
+    en: path("product", "en", product.slug_en) + (!isStandalone && selected ? `?variant=${selected.sku}` : ""),
+  } : null);
 
   const name = product ? pick(product, "name", lang) : "";
-  const variantTitle = selected ? `${name} — ${selected.size} ${CONDITION_LABEL[selected.condition][lang]}` : name;
+  const variantTitle = selected && !isStandalone ? `${name} — ${selected.size} ${CONDITION_LABEL[selected.condition][lang]}` : name;
   const images = selected?.image ? [selected.image, ...(product?.images || []).filter((i) => i !== selected.image)] : product?.images || [];
 
   const crumbs = product
@@ -96,7 +110,7 @@ export default function Product() {
             mpn: selected.mpn || undefined,
             gtin: selected.gtin || undefined,
             brand: { "@type": "Brand", name: "HJ Container ApS" },
-            inProductGroupWithID: selected.item_group_id,
+            inProductGroupWithID: isStandalone ? undefined : selected.item_group_id,
             offers: {
               "@type": "Offer",
               url: `${typeof window === "undefined" ? "" : window.location.origin}${pathname}?variant=${selected.sku}`,
@@ -111,12 +125,21 @@ export default function Product() {
       : [],
   });
 
-  if (isLoading) return <p className="mx-auto max-w-7xl px-5 py-20 hjc-mono text-sm text-slate-500">{L(lang, "Indlæser…", "Loading…")}</p>;
-  if (!product || !selected) return <PageNotFoundContent />;
+  if (isLoading || (product && !selected)) return <p className="mx-auto max-w-7xl px-5 py-20 hjc-mono text-sm text-slate-500">{L(lang, "Indlæser…", "Loading…")}</p>;
+  if (!product) return <PageNotFoundContent />;
 
   const canOrder = selected.direct_order && selected.price_incl_vat > 0 && selected.availability !== "out_of_stock";
   const sizeCollection = COLLECTIONS.find((c) => c.kind === "size" && c.key === selected.size);
-  const relatedProducts = products.filter((p) => p.key !== product.key).slice(0, 3);
+  const relatedProducts = products
+    .filter((candidate) => candidate.key !== product.key)
+    .map((candidate) => ({
+      product: candidate,
+      variant: candidate.catalog_mode === "standalone"
+        ? standaloneVariantOf(candidate)
+        : variants.find((variant) => variant.product_key === candidate.key && variant.size === selected.size),
+    }))
+    .filter((item) => item.variant)
+    .slice(0, 3);
   const relevantFaqs = faqs.filter((f) => ["delivery", "unloading", "ordering", "returns"].includes(f.category)).slice(0, 5);
 
   const addToCart = () => {
@@ -128,8 +151,7 @@ export default function Product() {
       },
       L(lang, `${variantTitle} lagt i kurven.`, `${variantTitle} added to cart.`)
     );
-    setAdded(true);
-    setTimeout(() => setAdded(false), 4000);
+    navigate(path("cart", lang));
   };
 
   return (
@@ -143,11 +165,16 @@ export default function Product() {
           <p className="hjc-label">{CATEGORY_LABEL[product.category][lang]}</p>
           <h1 className="mt-3 font-heading text-3xl md:text-4xl font-extrabold leading-tight">{variantTitle}</h1>
           <p className="hjc-mono text-[11px] text-slate-400 mt-2">
-            SKU {selected.sku} · {L(lang, "Produktgruppe", "Product group")} {selected.item_group_id}
+            SKU {selected.sku}
+            {!isStandalone && <> · {L(lang, "Produktgruppe", "Product group")} {selected.item_group_id}</>}
           </p>
           <p className="mt-5 text-slate-600 leading-relaxed">{pick(product, "short", lang)}</p>
 
-          <div className="mt-8"><VariantSelector variants={myVariants} selected={selected} onSelect={selectVariant} lang={lang} /></div>
+          {!isStandalone && (
+            <div className="mt-8">
+              <VariantSelector variants={variants} products={products} selected={selected} onSelect={selectVariant} lang={lang} />
+            </div>
+          )}
 
           <div className="mt-8"><PriceBlock variant={selected} lang={lang} delivery={delivery} /></div>
 
@@ -159,7 +186,7 @@ export default function Product() {
               <button onClick={() => setQuantity((q) => q + 1)} className="p-3" aria-label={L(lang, "Flere", "Increase quantity")}><Plus className="w-4 h-4" /></button>
             </div>
             {canOrder && (
-              <button onClick={addToCart} className="flex-1 min-w-[180px] bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 py-3.5">
+              <button onClick={addToCart} className="flex-1 min-w-[180px] bg-orange-500 hover:bg-orange-600 text-white text-base font-semibold px-6 py-3.5">
                 {L(lang, "Læg i kurv", "Add to cart")}
               </button>
             )}
@@ -168,13 +195,6 @@ export default function Product() {
               {L(lang, "Anmod om tilbud", "Request a quote")}
             </Link>
           </div>
-
-          {added && (
-            <p className="mt-4 flex items-center gap-2 text-sm text-emerald-700 font-medium">
-              <Check className="w-4 h-4" /> {L(lang, "Lagt i kurven.", "Added to cart.")}{" "}
-              <Link to={path("cart", lang)} className="underline">{L(lang, "Gå til kurv", "Go to cart")}</Link>
-            </p>
-          )}
 
           {!canOrder && (
             <p className="mt-4 text-sm text-slate-600 border-l-2 border-orange-500 pl-4">
@@ -260,11 +280,9 @@ export default function Product() {
         <section className="mt-16">
           <h2 className="font-heading text-2xl font-extrabold border-b border-slate-200 pb-5">{L(lang, "Relaterede containere", "Related containers")}</h2>
           <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {relatedProducts.map((p) => {
-              const list = variants.filter((v) => v.product_key === p.key);
-              const v = list.find((x) => x.size === selected.size) || startingVariant(list);
-              return <ProductCard key={p.key} product={p} variant={v} lang={lang} />;
-            })}
+            {relatedProducts.map(({ product: relatedProduct, variant: relatedVariant }) => (
+              <ProductCard key={relatedProduct.key} product={relatedProduct} variant={relatedVariant} lang={lang} />
+            ))}
           </div>
         </section>
       )}
