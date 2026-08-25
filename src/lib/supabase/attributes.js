@@ -19,8 +19,14 @@ export async function getAttributes(locale = SOURCE_LOCALE) {
   return rows.map((row) => overlayTranslation(row, translations, ["name"]));
 }
 
-export async function getAttributeValues(locale = SOURCE_LOCALE) {
-  const { data, error } = await supabase.from("attribute_values").select("*").eq("store_id", STORE_ID);
+// `attribute_values` has no store_id column of its own — it's scoped
+// through its parent attribute (attribute_id -> attributes.id), so this
+// needs that store's attribute ids first, not a direct store_id filter.
+export async function getAttributeValues(locale = SOURCE_LOCALE, attributeIds) {
+  const ids = attributeIds ?? (await getAttributes(SOURCE_LOCALE)).map((a) => a.id);
+  if (!ids.length) return [];
+
+  const { data, error } = await supabase.from("attribute_values").select("*").in("attribute_id", ids);
   if (error) {
     console.warn("getAttributeValues failed:", error.message);
     return [];

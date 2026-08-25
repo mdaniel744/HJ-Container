@@ -18,10 +18,14 @@ function useAttrDefs(locale) {
     queryFn: () => (STORE_ID ? getSupabaseAttributes(locale) : Promise.resolve(localAttrs(locale))),
   });
 }
-function useAttrValueDefs(locale) {
+// attribute_values has no store_id of its own — it's scoped through its
+// parent attribute (attribute_id), so this needs that store's attribute ids
+// first (see src/lib/supabase/attributes.js).
+function useAttrValueDefs(locale, attributeIds) {
   return useQuery({
-    queryKey: ["attr-value-defs", STORE_ID, locale],
-    queryFn: () => (STORE_ID ? getSupabaseAttributeValues(locale) : Promise.resolve(localAttrValues(locale))),
+    queryKey: ["attr-value-defs", STORE_ID, locale, attributeIds],
+    queryFn: () => (STORE_ID ? getSupabaseAttributeValues(locale, attributeIds) : Promise.resolve(localAttrValues(locale))),
+    enabled: !STORE_ID || attributeIds !== undefined,
   });
 }
 
@@ -38,8 +42,9 @@ function useAttrValueDefs(locale) {
 export function useAttributeVocabulary(locale = SOURCE_LOCALE) {
   const sourceAttrsQuery = useAttrDefs(SOURCE_LOCALE);
   const displayAttrsQuery = useAttrDefs(locale);
-  const sourceValuesQuery = useAttrValueDefs(SOURCE_LOCALE);
-  const displayValuesQuery = useAttrValueDefs(locale);
+  const sourceAttrIds = sourceAttrsQuery.data?.map((a) => a.id);
+  const sourceValuesQuery = useAttrValueDefs(SOURCE_LOCALE, sourceAttrIds);
+  const displayValuesQuery = useAttrValueDefs(locale, sourceAttrIds);
 
   const sourceAttrs = sourceAttrsQuery.data || [];
   const displayAttrs = displayAttrsQuery.data || [];
