@@ -45,6 +45,30 @@ export function overlayTranslation(row, translationsMap, fields) {
 }
 
 /**
+ * Fetches one translated field's value, or null if no translation row
+ * exists yet. Used for on-demand lookups (e.g. the language-switcher link)
+ * where fetching every field via fetchTranslations() would be wasteful.
+ */
+export async function fetchTranslationValue(entityType, entityId, fieldName, locale) {
+  if (!entityId || locale === SOURCE_LOCALE) return null;
+  const { data, error } = await supabase
+    .from("translations")
+    .select("value")
+    .eq("store_id", STORE_ID)
+    .eq("entity_type", entityType)
+    .eq("entity_id", entityId)
+    .eq("field_name", fieldName)
+    .eq("locale", locale)
+    .maybeSingle();
+
+  if (error) {
+    console.warn(`translation value fetch failed for ${entityType}/${fieldName}/${locale}:`, error.message);
+    return null;
+  }
+  return data?.value || null;
+}
+
+/**
  * Resolves a requested slug to an entity id for a non-source locale, since
  * per-locale slugs live in translations (field_name: "slug"), not on the
  * base row.

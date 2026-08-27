@@ -3,118 +3,82 @@ import { Link } from "@/lib/next-router";
 import { SlidersHorizontal, X, LayoutGrid, List } from "lucide-react";
 import ShopFilters from "./ShopFilters";
 import ProductGrid from "./ProductGrid";
-import { CONDITION_LABEL, L, pick } from "@/lib/i18n";
-import { CATEGORY_LABEL, SIZE_ORDER, path } from "@/lib/routes";
-import { CONTAINER_TYPES } from "@/lib/containerTypes";
-import { standaloneVariantOf } from "@/data/demoCatalog";
+import { L } from "@/lib/i18n";
+import { path } from "@/lib/routes";
+import { useAttributeVocabulary } from "@/lib/useAttributeVocabulary";
 
-const EMPTY = { category: [], size: [], condition: [], color: [], availability: [], flags: [], maxPrice: null };
+const EMPTY = { category: [], attrs: {}, availability: [], maxPrice: null };
 
-export default function CatalogView({ lang, products, variants, lockedFilter, initialQuery = "", groupBySize = false }) {
-  const [filters, setFilters] = useState({ ...EMPTY });
+function effectivePrice(p) {
+  return p.sale_price > 0 && p.sale_price < p.price ? p.sale_price : p.price;
+}
+
+export default function CatalogView({ lang, products, categories, lockedCategoryId, initialQuery = "", initialAttrs }) {
+  const [filters, setFilters] = useState({ ...EMPTY, attrs: initialAttrs || {} });
   const [sort, setSort] = useState("recommended");
   const [q, setQ] = useState(initialQuery);
   const [view, setView] = useState("grid");
   const [limit, setLimit] = useState(12);
   const [drawer, setDrawer] = useState(false);
+  const { facetDefinitions } = useAttributeVocabulary(lang);
 
-  const productByKey = useMemo(() => Object.fromEntries(products.map((p) => [p.key, p])), [products]);
-
-  const allRows = useMemo(() => {
-    const variableRows = variants
-      .map((variant) => ({ variant, product: productByKey[variant.product_key], standalone: false }))
-      .filter((row) => row.product && row.product.catalog_mode !== "standalone");
-    const standaloneRows = products
-      .filter((product) => product.catalog_mode === "standalone")
-      .map((product) => ({ product, variant: standaloneVariantOf(product), standalone: true }));
-    return [...variableRows, ...standaloneRows];
-  }, [variants, products, productByKey]);
-
-  const colors = useMemo(
-    () => [...new Set(allRows.map((r) => pick(r.variant, "color", lang)).filter(Boolean))],
-    [allRows, lang]
-  );
-  const maxPrice = useMemo(
-    () => Math.max(50000, ...allRows.map((r) => r.variant.price_incl_vat || 0)),
-    [allRows]
-  );
+  const maxPrice = useMemo(() => Math.max(50000, ...products.map((p) => p.price || 0)), [products]);
 
   const rows = useMemo(() => {
-    let list = allRows;
-    if (lockedFilter?.category) list = list.filter((r) => r.product.category === lockedFilter.category);
-    if (lockedFilter?.size) list = list.filter((r) => r.variant.size === lockedFilter.size);
-    if (filters.category.length) list = list.filter((r) => filters.category.includes(r.product.category));
-    if (filters.size.length) list = list.filter((r) => filters.size.includes(r.variant.size));
-    if (filters.condition.length) list = list.filter((r) => filters.condition.includes(r.variant.condition));
-    if (filters.color.length) list = list.filter((r) => filters.color.includes(pick(r.variant, "color", lang)));
-    if (filters.availability.includes("in_stock")) list = list.filter((r) => r.variant.availability === "in_stock");
-    if (filters.flags.includes("direct")) list = list.filter((r) => r.variant.direct_order);
-    if (filters.flags.includes("quote")) list = list.filter((r) => !r.variant.direct_order);
-    if (filters.maxPrice) list = list.filter((r) => !r.variant.price_incl_vat || r.variant.price_incl_vat <= filters.maxPrice);
+    let list = products;
+    if (lockedCategoryId) list = list.filter((p) => p.category_id === lockedCategoryId);
+    if (filters.category.length) list = list.filter((p) => filters.category.includes(p.category_id));
+    Object.entries(filters.attrs).forEach(([key, values]) => {
+      if (values.length) list = list.filter((p) => values.includes(p.attributes?.[key]));
+    });
+    if (filters.availability.includes("in_stock")) list = list.filter((p) => p.stock_quantity > 0);
+    if (filters.maxPrice) list = list.filter((p) => !p.price || p.price <= filters.maxPrice);
     if (q.trim()) {
       const t = q.toLowerCase();
-      list = list.filter((r) =>
-        [pick(r.product, "name", lang), r.variant.sku, r.variant.size, pick(r.variant, "color", lang)]
-          .filter(Boolean).join(" ").toLowerCase().includes(t)
+      list = list.filter((p) =>
+        [p.name, p.sku, ...Object.values(p.attributes || {})].filter(Boolean).join(" ").toLowerCase().includes(t)
       );
     }
     const sorters = {
-      price_asc: (a, b) => (a.variant.price_incl_vat || 1e9) - (b.variant.price_incl_vat || 1e9),
-      price_desc: (a, b) => (b.variant.price_incl_vat || 0) - (a.variant.price_incl_vat || 0),
-      newest: (a, b) => new Date(b.variant.created_date || 0) - new Date(a.variant.created_date || 0),
-      size: (a, b) => SIZE_ORDER[a.variant.size] - SIZE_ORDER[b.variant.size],
-      availability: (a, b) => (a.variant.availability === "in_stock" ? -1 : 1) - (b.variant.availability === "in_stock" ? -1 : 1),
-      recommended: (a, b) =>
-        (b.variant.direct_order ? 1 : 0) - (a.variant.direct_order ? 1 : 0) ||
-        SIZE_ORDER[a.variant.size] - SIZE_ORDER[b.variant.size],
+      price_asc: (a, b) => (effectivePrice(a) || 1e9) - (effectivePrice(b) || 1e9),
+      price_desc: (a, b) => (effectivePrice(b) || 0) - (effectivePrice(a) || 0),
+      name: (a, b) => a.name.localeCompare(b.name),
+      recommended: (a, b) => (b.is_featured ? 1 : 0) - (a.is_featured ? 1 : 0),
     };
     return [...list].sort(sorters[sort] || sorters.recommended);
-  }, [allRows, filters, q, sort, lang, lockedFilter]);
-
-  const displayRows = useMemo(() => {
-    if (!groupBySize) return rows;
-
-    const groups = new Map();
-    rows.filter((row) => !row.standalone).forEach((row) => {
-      const options = groups.get(row.variant.size) || [];
-      options.push(row);
-      groups.set(row.variant.size, options);
-    });
-
-    const variableGroups = [...groups.entries()].map(([size, options]) => {
-      const representative =
-        options.find(({ product, variant }) => product.key === "standard" && variant.condition === "new") ||
-        options.find(({ variant }) => variant.availability === "in_stock" && variant.direct_order) ||
-        options[0];
-      return { ...representative, size, options };
-    });
-    return [...variableGroups, ...rows.filter((row) => row.standalone)];
-  }, [rows, groupBySize]);
-
-  const selectedSpecialtyTypes = filters.category
-    .map((key) => CONTAINER_TYPES.find((type) => type.key === key))
-    .filter((type) => type?.mode === "service");
-
-  const standaloneCount = displayRows.filter((row) => row.standalone).length;
-  const sizeGroupCount = displayRows.filter((row) => row.options).length;
+  }, [products, filters, q, sort, lockedCategoryId]);
 
   const chips = [
-    ...filters.category.map((c) => ({
-      key: "category",
-      value: c,
-      label: CONTAINER_TYPES.find((type) => type.key === c)?.label[lang] || CATEGORY_LABEL[c]?.[lang] || c,
-    })),
-    ...filters.size.map((s) => ({ key: "size", value: s, label: s })),
-    ...filters.condition.map((c) => ({ key: "condition", value: c, label: CONDITION_LABEL[c][lang] })),
-    ...filters.color.map((c) => ({ key: "color", value: c, label: c })),
-    ...filters.availability.map((c) => ({ key: "availability", value: c, label: L(lang, "På lager", "In stock") })),
-    ...filters.flags.map((f) => ({ key: "flags", value: f, label: f === "direct" ? L(lang, "Direkte køb", "Direct order") : L(lang, "Kræver tilbud", "Quote required") })),
+    ...filters.category.map((id) => ({ group: "category", value: id, label: categories.find((c) => c.id === id)?.name || id })),
+    ...Object.entries(filters.attrs).flatMap(([key, values]) =>
+      values.map((v) => ({
+        group: "attrs",
+        attrKey: key,
+        value: v,
+        label: facetDefinitions.find((f) => f.key === key)?.values.find((fv) => fv.raw === v)?.label || v,
+      }))
+    ),
+    ...filters.availability.map((v) => ({ group: "availability", value: v, label: L(lang, "På lager", "In stock") })),
   ];
 
-  const removeChip = (chip) =>
-    setFilters({ ...filters, [chip.key]: filters[chip.key].filter((v) => v !== chip.value) });
+  const removeChip = (chip) => {
+    if (chip.group === "attrs") {
+      setFilters({ ...filters, attrs: { ...filters.attrs, [chip.attrKey]: filters.attrs[chip.attrKey].filter((v) => v !== chip.value) } });
+    } else {
+      setFilters({ ...filters, [chip.group]: filters[chip.group].filter((v) => v !== chip.value) });
+    }
+  };
 
-  const filterPanel = <ShopFilters lang={lang} filters={filters} setFilters={setFilters} colors={colors} maxPrice={maxPrice} />;
+  const filterPanel = (
+    <ShopFilters
+      lang={lang}
+      filters={filters}
+      setFilters={setFilters}
+      categories={lockedCategoryId ? [] : categories}
+      facetDefinitions={facetDefinitions}
+      maxPrice={maxPrice}
+    />
+  );
 
   return (
     <div className="grid lg:grid-cols-[280px_1fr] gap-10">
@@ -142,9 +106,7 @@ export default function CatalogView({ lang, products, variants, lockedFilter, in
               <option value="recommended">{L(lang, "Anbefalet", "Recommended")}</option>
               <option value="price_asc">{L(lang, "Pris: lav til høj", "Price: low to high")}</option>
               <option value="price_desc">{L(lang, "Pris: høj til lav", "Price: high to low")}</option>
-              <option value="newest">{L(lang, "Nyeste", "Newest")}</option>
-              <option value="size">{L(lang, "Størrelse", "Size")}</option>
-              <option value="availability">{L(lang, "Tilgængelighed", "Availability")}</option>
+              <option value="name">{L(lang, "Navn", "Name")}</option>
             </select>
           </label>
           <div className="hidden sm:flex border border-slate-300">
@@ -156,17 +118,9 @@ export default function CatalogView({ lang, products, variants, lockedFilter, in
         </div>
 
         <div className="flex flex-wrap items-center gap-2 mt-4">
-          <p className="hjc-mono text-[11px] text-slate-500 mr-2">
-            {groupBySize
-              ? L(
-                lang,
-                `${sizeGroupCount} størrelser · ${standaloneCount} specialprodukter · ${rows.length} muligheder`,
-                `${sizeGroupCount} sizes · ${standaloneCount} specialist products · ${rows.length} options`
-              )
-              : `${rows.length} ${L(lang, "varianter", "variants")}`}
-          </p>
+          <p className="hjc-mono text-[11px] text-slate-500 mr-2">{rows.length} {L(lang, "containere", "containers")}</p>
           {chips.map((c) => (
-            <button key={c.key + c.value} onClick={() => removeChip(c)}
+            <button key={`${c.group}-${c.attrKey || ""}-${c.value}`} onClick={() => removeChip(c)}
               className="inline-flex items-center gap-1.5 border border-slate-300 px-2.5 py-1 hjc-mono text-[11px] hover:bg-slate-50">
               {c.label} <X className="w-3 h-3" />
             </button>
@@ -181,38 +135,25 @@ export default function CatalogView({ lang, products, variants, lockedFilter, in
         <div className="mt-6">
           {rows.length === 0 ? (
             <div className="border border-slate-200 p-10 text-center">
-              <p className="font-heading font-bold text-lg">
-                {selectedSpecialtyTypes.length
-                  ? L(lang, "Denne containertype tilbydes efter forespørgsel", "This container type is available by request")
-                  : L(lang, "Ingen containere matcher dine filtre", "No containers match your filters")}
-              </p>
+              <p className="font-heading font-bold text-lg">{L(lang, "Ingen containere matcher dine filtre", "No containers match your filters")}</p>
               <p className="mt-2 text-sm text-slate-600">
-                {selectedSpecialtyTypes.length
-                  ? L(lang,
-                    "Send os størrelse, stand og leveringsoplysninger, så sammensætter vi et individuelt tilbud.",
-                    "Send us the size, condition and delivery details, and we will prepare a tailored quote.")
-                  : L(lang,
-                    "Prøv at rydde filtrene, eller send en tilbudsforespørgsel — vi kan ofte skaffe en specifik variant.",
-                    "Try clearing the filters, or send a quote request — we can often source a specific variant.")}
+                {L(lang,
+                  "Prøv at rydde filtrene, eller send en tilbudsforespørgsel — vi kan ofte skaffe en specifik variant.",
+                  "Try clearing the filters, or send a quote request — we can often source a specific variant.")}
               </p>
               <div className="mt-6 flex flex-wrap gap-3 justify-center">
                 <button onClick={() => { setFilters({ ...EMPTY }); setQ(""); }} className="bg-slate-900 text-white font-semibold px-5 py-3 text-sm">
                   {L(lang, "Ryd filtre", "Clear filters")}
                 </button>
-                <Link
-                  to={selectedSpecialtyTypes.length
-                    ? `${path("quote", lang)}?type=${selectedSpecialtyTypes[0].key}`
-                    : path("quote", lang)}
-                  className="border border-slate-900 font-semibold px-5 py-3 text-sm"
-                >
+                <Link to={path("quote", lang)} className="border border-slate-900 font-semibold px-5 py-3 text-sm">
                   {L(lang, "Anmod om tilbud", "Request a quote")}
                 </Link>
               </div>
             </div>
           ) : (
             <>
-              <ProductGrid rows={displayRows.slice(0, limit)} lang={lang} view={view} />
-              {displayRows.length > limit && (
+              <ProductGrid products={rows.slice(0, limit)} lang={lang} view={view} />
+              {rows.length > limit && (
                 <div className="mt-10 text-center">
                   <button onClick={() => setLimit((l) => l + 12)} className="border border-slate-900 font-semibold px-7 py-3.5 text-sm hover:bg-slate-50">
                     {L(lang, "Vis flere containere", "Load more containers")}

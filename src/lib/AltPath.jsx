@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { CONTAINER_TYPES, ROUTES } from "@/lib/routes";
+import { ROUTES } from "@/lib/routes";
 
 const AltPathContext = createContext({ alt: null, setAlt: () => {} });
 
@@ -22,7 +22,13 @@ export function useAltPath() {
   return useContext(AltPathContext).alt;
 }
 
-/** Generic path translation for routes without dynamic slugs. */
+/**
+ * Generic path translation for routes without dynamic slugs. Pages with a
+ * translated slug (products, categories) register their own counterpart via
+ * useRegisterAltPath instead — by the time someone can click the language
+ * switcher on those pages, that registration has already run, so this is
+ * only reached for the small set of static routes.
+ */
 export function translatePath(pathname, target) {
   const isEn = pathname === "/en" || pathname.startsWith("/en/");
   const current = isEn ? "en" : "da";
@@ -32,11 +38,6 @@ export function translatePath(pathname, target) {
     if (r.da.includes(":slug")) continue;
     if (pathname === r[current]) return r[target];
   }
-  // Container-type categories
-  const segs = pathname.split("/").filter(Boolean);
-  const last = segs[segs.length - 1];
-  const col = CONTAINER_TYPES.find((c) => c.slug[current] === last);
-  if (col) return (target === "en" ? "/en/containers/" : "/containere/") + col.slug[target];
 
   return target === "en" ? "/en" : "/";
 }

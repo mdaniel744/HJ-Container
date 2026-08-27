@@ -9,7 +9,7 @@ import DeliverySection from "@/components/home/DeliverySection";
 import FaqPreview from "@/components/home/FaqPreview";
 import FinalCta from "@/components/home/FinalCta";
 import { useLang, L, pick } from "@/lib/i18n";
-import { useCatalog } from "@/lib/useCatalog";
+import { useProducts } from "@/lib/useCatalog";
 import { useSeo, organizationJsonLd } from "@/lib/seo";
 import { path } from "@/lib/routes";
 import { applyFaqOverrides } from "@/lib/faqOverrides";
@@ -18,7 +18,7 @@ import { FAQS, POLICIES } from "@/data/content";
 export default function Home() {
   const lang = useLang();
   const origin = typeof window === "undefined" ? "" : window.location.origin;
-  const { products, variants } = useCatalog();
+  const { products } = useProducts(lang);
   const faqs = applyFaqOverrides(FAQS.filter((faq) => faq.published && faq.show_on_home).slice(0, 8));
   const policies = POLICIES.filter((policy) => policy.published);
 
@@ -46,7 +46,7 @@ export default function Home() {
       <Hero lang={lang} />
       <CategoryCards lang={lang} />
       <SizeCards lang={lang} />
-      <FeaturedProducts lang={lang} products={products} variants={variants} />
+      <FeaturedProducts lang={lang} products={products} />
       <TrustPoints lang={lang} />
       <HowItWorks lang={lang} />
       <DeliverySection lang={lang} deliveryPolicySlug={deliveryPolicy ? pick(deliveryPolicy, "slug", lang) : null} />

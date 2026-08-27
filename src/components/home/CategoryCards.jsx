@@ -1,34 +1,16 @@
 import React from "react";
 import { Link } from "@/lib/next-router";
+import { ArrowUpRight, Wrench } from "lucide-react";
 import { Image } from "@/components/ui/image";
-import {
-  ArrowLeftRight,
-  ArrowUpRight,
-  Box,
-  BriefcaseBusiness,
-  DoorOpen,
-  MoveVertical,
-  ThermometerSnowflake,
-  Warehouse,
-  Wrench,
-} from "lucide-react";
 import { L } from "@/lib/i18n";
-import { COLLECTIONS, path } from "@/lib/routes";
-import { CONTAINER_TYPES } from "@/lib/containerTypes";
-import { MEDIA } from "@/lib/media";
-
-const ICONS = {
-  standard: Box,
-  high_cube: MoveVertical,
-  open_side: DoorOpen,
-  storage: Warehouse,
-  office: BriefcaseBusiness,
-  conversions: Wrench,
-  insulated: ThermometerSnowflake,
-  tunnel: ArrowLeftRight,
-};
+import { path } from "@/lib/routes";
+import { useCategories } from "@/lib/useCatalog";
+import { stripHtmlToText } from "@/lib/richText";
 
 export default function CategoryCards({ lang }) {
+  const { categories } = useCategories(lang);
+  if (!categories.length) return null;
+
   return (
     <section className="bg-white">
       <div className="mx-auto max-w-7xl px-5 py-20">
@@ -72,49 +54,55 @@ export default function CategoryCards({ lang }) {
         </div>
 
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {CONTAINER_TYPES.map((type) => {
-            const Icon = ICONS[type.key];
-            const collection = type.mode !== "service" ? COLLECTIONS.find((item) => item.key === type.key) : null;
-            const href = collection
-              ? path("category", lang, collection.slug[lang])
-              : `${path("quote", lang)}?type=${type.key}`;
-            const image = MEDIA[type.key];
-            return (
-              <Link
-                key={type.key}
-                to={href}
-                className="group relative flex min-h-[390px] flex-col overflow-hidden border border-slate-200 bg-white transition duration-300 hover:-translate-y-1 hover:border-orange-400 hover:shadow-xl hover:shadow-slate-200/70"
-              >
-                <span className="absolute inset-x-0 top-0 h-1 origin-left scale-x-0 bg-orange-500 transition-transform duration-300 group-hover:scale-x-100" />
-                <div className="aspect-[4/3] overflow-hidden bg-slate-100">
-                  {image ? (
-                    <Image
-                      src={image}
-                      alt={type.label[lang]}
-                      className="h-full w-full transition-transform duration-500 group-hover:scale-105"
-                    />
-                  ) : (
-                    <div className="hjc-brand-grid flex h-full w-full items-center justify-center bg-slate-900 text-orange-400" aria-hidden="true">
-                      <Icon className="h-14 w-14" strokeWidth={1.25} />
-                    </div>
-                  )}
+          {categories.map((c) => (
+            <Link
+              key={c.id}
+              to={path("category", lang, c.slug)}
+              className="group relative flex min-h-[390px] flex-col overflow-hidden border border-slate-200 bg-white transition duration-300 hover:-translate-y-1 hover:border-orange-400 hover:shadow-xl hover:shadow-slate-200/70"
+            >
+              <span className="absolute inset-x-0 top-0 h-1 origin-left scale-x-0 bg-orange-500 transition-transform duration-300 group-hover:scale-x-100" />
+              <div className="aspect-[4/3] overflow-hidden bg-slate-100">
+                {c.image_url && (
+                  <Image src={c.image_url} alt={c.name} className="h-full w-full transition-transform duration-500 group-hover:scale-105" />
+                )}
+              </div>
+              <div className="flex flex-1 flex-col p-6">
+                <div className="flex items-start justify-between gap-4">
+                  <h3 className="font-heading text-xl font-bold leading-tight text-slate-950">{c.name}</h3>
+                  <ArrowUpRight className="h-5 w-5 shrink-0 text-slate-400 transition-colors group-hover:text-orange-500" />
                 </div>
-                <div className="flex flex-1 flex-col p-6">
-                  <div className="flex items-start justify-between gap-4">
-                    <h3 className="font-heading text-xl font-bold leading-tight text-slate-950">{type.label[lang]}</h3>
-                    <ArrowUpRight className="h-5 w-5 shrink-0 text-slate-400 transition-colors group-hover:text-orange-500" />
-                  </div>
-                  <p className="mt-3 text-sm leading-relaxed text-slate-600">{type.description[lang]}</p>
-                  <div className="mt-auto flex items-center gap-2 pt-6 text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">
-                    <span className={`h-1.5 w-1.5 ${collection ? "bg-emerald-500" : "bg-orange-500"}`} />
-                    {collection
-                      ? L(lang, "Se containere", "Shop containers")
-                      : L(lang, "Tilpasset tilbud", "Custom quote")}
-                  </div>
+                <p className="mt-3 text-sm leading-relaxed text-slate-600 line-clamp-3">{stripHtmlToText(c.description)}</p>
+                <div className="mt-auto flex items-center gap-2 pt-6 text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">
+                  <span className="h-1.5 w-1.5 bg-emerald-500" />
+                  {L(lang, "Se containere", "Shop containers")}
                 </div>
-              </Link>
-            );
-          })}
+              </div>
+            </Link>
+          ))}
+          <Link
+            to={`${path("quote", lang)}?type=conversions`}
+            className="group relative flex min-h-[390px] flex-col overflow-hidden border border-slate-200 bg-white transition duration-300 hover:-translate-y-1 hover:border-orange-400 hover:shadow-xl hover:shadow-slate-200/70"
+          >
+            <span className="absolute inset-x-0 top-0 h-1 origin-left scale-x-0 bg-orange-500 transition-transform duration-300 group-hover:scale-x-100" />
+            <div className="aspect-[4/3] overflow-hidden bg-slate-900 text-orange-400 flex items-center justify-center">
+              <Wrench className="h-14 w-14" strokeWidth={1.25} />
+            </div>
+            <div className="flex flex-1 flex-col p-6">
+              <div className="flex items-start justify-between gap-4">
+                <h3 className="font-heading text-xl font-bold leading-tight text-slate-950">{L(lang, "Containerombygninger", "Container Conversions")}</h3>
+                <ArrowUpRight className="h-5 w-5 shrink-0 text-slate-400 transition-colors group-hover:text-orange-500" />
+              </div>
+              <p className="mt-3 text-sm leading-relaxed text-slate-600">
+                {L(lang,
+                  "Skræddersyede døre, vinduer, indretning og finish til dit projekt.",
+                  "Tailored doors, windows, interiors and finishes for your project.")}
+              </p>
+              <div className="mt-auto flex items-center gap-2 pt-6 text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">
+                <span className="h-1.5 w-1.5 bg-orange-500" />
+                {L(lang, "Tilpasset tilbud", "Custom quote")}
+              </div>
+            </div>
+          </Link>
         </div>
       </div>
     </section>

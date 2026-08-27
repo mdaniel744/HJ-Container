@@ -1,9 +1,11 @@
 import { supabase, STORE_ID } from "./client";
 import { SOURCE_LOCALE, fetchTranslations, overlayTranslation, findEntityIdByTranslatedSlug } from "./translations";
 
-// "description" carries rich-text HTML on the source row — see
-// src/components/RichText.jsx for rendering.
-const TRANSLATABLE_FIELDS = ["name", "slug", "description", "meta_title", "meta_description"];
+// Deliberately excludes "slug" — see the matching note in
+// src/lib/supabase/products.js; category.slug must stay the stable
+// source-locale value. "description" carries rich-text HTML on the source
+// row — see src/components/RichText.jsx for rendering.
+const TRANSLATABLE_FIELDS = ["name", "description", "meta_title", "meta_description"];
 
 export async function getCategories(locale = SOURCE_LOCALE) {
   const { data, error } = await supabase
@@ -30,8 +32,7 @@ export async function getCategoryBySlug(slug, locale = SOURCE_LOCALE) {
     query = query.eq("slug", slug);
   } else {
     const entityId = await findEntityIdByTranslatedSlug("category", slug, locale);
-    if (!entityId) return null;
-    query = query.eq("id", entityId);
+    query = entityId ? query.eq("id", entityId) : query.eq("slug", slug);
   }
 
   const { data, error } = await query.maybeSingle();

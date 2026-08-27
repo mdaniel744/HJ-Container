@@ -3,7 +3,8 @@ import Image from "next/image";
 import { Link, useNavigate } from "@/lib/next-router";
 import { Menu, Search, ShoppingCart, X } from "lucide-react";
 import { useLang, L } from "@/lib/i18n";
-import { path, CONTAINER_TYPES } from "@/lib/routes";
+import { path } from "@/lib/routes";
+import { useCategories } from "@/lib/useCatalog";
 import { useCart } from "@/lib/CartContext";
 import LanguageSwitcher from "./LanguageSwitcher";
 import NavDropdown from "./NavDropdown";
@@ -13,6 +14,7 @@ export default function Header() {
   const lang = useLang();
   const navigate = useNavigate();
   const { count } = useCart();
+  const { categories } = useCategories(lang);
   const [compact, setCompact] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -24,11 +26,10 @@ export default function Header() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const shopItems = CONTAINER_TYPES.map((c) => ({
-    to: path("category", lang, c.slug[lang]),
-    label: c.label[lang],
-    meta: null,
-  }));
+  const shopItems = [
+    ...categories.map((c) => ({ to: path("category", lang, c.slug), label: c.name, meta: null })),
+    { to: `${path("quote", lang)}?type=conversions`, label: L(lang, "Containerombygninger", "Container Conversions"), meta: null },
+  ];
 
   const submitSearch = (e) => {
     e.preventDefault();

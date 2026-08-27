@@ -3,9 +3,9 @@ import Image from "next/image";
 import { Link } from "@/lib/next-router";
 import { Mail, MapPin, Phone } from "lucide-react";
 import { L, pick, useLang } from "@/lib/i18n";
-import { path, CONTAINER_TYPES } from "@/lib/routes";
+import { path } from "@/lib/routes";
 import { COMPANY } from "@/lib/company";
-import { useSettings } from "@/lib/useCatalog";
+import { useSettings, useCategories } from "@/lib/useCatalog";
 import { GUIDES } from "@/lib/guides";
 import { POLICIES } from "@/data/content";
 
@@ -29,6 +29,7 @@ const COPYRIGHT_POLICY_LINKS = [
 export default function Footer() {
   const lang = useLang();
   const settings = useSettings();
+  const { categories } = useCategories(lang);
   const policies = POLICIES.filter((p) => p.published);
 
   return (
@@ -65,11 +66,12 @@ export default function Footer() {
         <div>
           <p className="hjc-label mb-4">{L(lang, "Containere", "Containers")}</p>
           <ul className="space-y-2 text-sm text-slate-600">
-            {CONTAINER_TYPES.map((c) => (
-              <li key={c.key}>
-                <Link className="hover:text-slate-900" to={path("category", lang, c.slug[lang])}>{c.label[lang]}</Link>
+            {categories.map((c) => (
+              <li key={c.id}>
+                <Link className="hover:text-slate-900" to={path("category", lang, c.slug)}>{c.name}</Link>
               </li>
             ))}
+            <li><Link className="hover:text-slate-900" to={`${path("quote", lang)}?type=conversions`}>{L(lang, "Containerombygninger", "Container Conversions")}</Link></li>
             <li><Link className="hover:text-slate-900" to={path("shop", lang)}>{L(lang, "Alle containere", "All containers")}</Link></li>
           </ul>
         </div>

@@ -1,10 +1,13 @@
 import { supabase, STORE_ID } from "./client";
 import { SOURCE_LOCALE, fetchTranslations, overlayTranslation, findEntityIdByTranslatedSlug } from "./translations";
 
-// Every text field that can carry a translation row. "description" and
-// "short_description" also carry rich-text HTML on the source row — see
-// src/components/RichText.jsx for rendering.
-const TRANSLATABLE_FIELDS = ["name", "slug", "description", "short_description", "badge"];
+// Every text field that can carry a translation row. Deliberately excludes
+// "slug": callers rely on product.slug always being the stable source-locale
+// value (see getProductBySlug's fallback below and Product.jsx's alt-language
+// link), so it must never get silently overlaid by a translated value.
+// "description" and "short_description" also carry rich-text HTML on the
+// source row — see src/components/RichText.jsx for rendering.
+const TRANSLATABLE_FIELDS = ["name", "description", "short_description", "badge"];
 
 /**
  * Full active catalogue for this store, in the given locale.
@@ -39,8 +42,10 @@ export async function getProductBySlug(slug, locale = SOURCE_LOCALE) {
     query = query.eq("slug", slug);
   } else {
     const entityId = await findEntityIdByTranslatedSlug("product", slug, locale);
-    if (!entityId) return null;
-    query = query.eq("id", entityId);
+    // No translated slug yet for this locale — fall back to treating the
+    // requested slug as the source-locale one, so a product stays reachable
+    // under a non-source URL before anyone has translated it.
+    query = entityId ? query.eq("id", entityId) : query.eq("slug", slug);
   }
 
   const { data, error } = await query.maybeSingle();

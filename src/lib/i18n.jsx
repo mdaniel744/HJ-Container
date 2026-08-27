@@ -43,4 +43,5 @@ export const AVAILABILITY_LABEL = {
 export const CONDITION_LABEL = {
   new: { da: "Ny / One Trip", en: "New / One Trip" },
   used: { da: "Brugt", en: "Used" },
+  refurbished: { da: "Renoveret", en: "Refurbished" },
 };

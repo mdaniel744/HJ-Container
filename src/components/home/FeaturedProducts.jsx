@@ -3,10 +3,9 @@ import { Link } from "@/lib/next-router";
 import ProductCard from "@/components/shop/ProductCard";
 import { L } from "@/lib/i18n";
 import { path } from "@/lib/routes";
-import { startingVariant, variantsOf } from "@/lib/useCatalog";
 
-export default function FeaturedProducts({ lang, products, variants }) {
-  const featured = products.filter((product) => product.featured).slice(0, 8);
+export default function FeaturedProducts({ lang, products }) {
+  const featured = products.filter((product) => product.is_featured).slice(0, 8);
 
   if (!featured.length) return null;
 
@@ -22,10 +21,7 @@ export default function FeaturedProducts({ lang, products, variants }) {
         </Link>
       </div>
       <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        {featured.map((product) => {
-          const variant = startingVariant(variantsOf(variants, product.key));
-          return variant ? <ProductCard key={product.key} product={product} variant={variant} lang={lang} /> : null;
-        })}
+        {featured.map((product) => <ProductCard key={product.id} product={product} lang={lang} />)}
       </div>
     </section>
   );

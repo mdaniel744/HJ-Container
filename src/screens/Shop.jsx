@@ -4,14 +4,24 @@ import Breadcrumbs from "@/components/site/Breadcrumbs";
 import CatalogView from "@/components/shop/CatalogView";
 import { L, useLang } from "@/lib/i18n";
 import { path } from "@/lib/routes";
-import { useCatalog } from "@/lib/useCatalog";
+import { useProducts, useCategories } from "@/lib/useCatalog";
 import { useSeo, breadcrumbJsonLd } from "@/lib/seo";
+
+const SIZE_ATTR_KEYS = ["Størrelse", "Size"];
 
 export default function Shop() {
   const lang = useLang();
-  const { products, variants, isLoading } = useCatalog();
+  const { products, isLoading } = useProducts(lang);
+  const { categories } = useCategories(lang);
   const [searchParams] = useSearchParams();
   const q = searchParams.get("q") || "";
+  const sizeParam = searchParams.get("size");
+
+  // Raw attribute keys are always source-locale — find whichever key this
+  // store actually uses for size by checking what's on the loaded products,
+  // rather than assuming a fixed key name.
+  const sizeKey = products.flatMap((p) => Object.keys(p.attributes || {})).find((k) => SIZE_ATTR_KEYS.includes(k));
+  const initialAttrs = sizeParam && sizeKey ? { [sizeKey]: [sizeParam] } : undefined;
 
   const crumbs = [
     { name: L(lang, "Forside", "Home"), path: path("home", lang) },
@@ -36,8 +46,8 @@ export default function Shop() {
         <h1 className="font-heading text-3xl md:text-4xl font-extrabold">{L(lang, "Alle containere", "All containers")}</h1>
         <p className="mt-4 text-slate-600 leading-relaxed">
           {L(lang,
-            "Standard-, High Cube- og Open Side-containere er samlet efter størrelse, så du nemt kan sammenligne versioner, stand og farve. Kontor-, opbevarings-, isolerede og tunnelcontainere vises som selvstændige produkter under deres egen containertype.",
-            "Standard, High Cube and Open Side containers are grouped by size so you can compare versions, conditions and colours. Office, Storage, Insulated and Tunnel containers are listed as standalone products within their own container type.")}
+            "Filtrér på containertype, størrelse, stand og pris for at finde den rette container. Bestil direkte, eller send en tilbudsforespørgsel.",
+            "Filter by container type, size, condition and price to find the right container. Order directly, or send a quote request.")}
         </p>
       </header>
 
@@ -45,7 +55,7 @@ export default function Shop() {
         {isLoading ? (
           <p className="hjc-mono text-sm text-slate-500">{L(lang, "Indlæser katalog…", "Loading catalogue…")}</p>
         ) : (
-          <CatalogView lang={lang} products={products} variants={variants} initialQuery={q} groupBySize />
+          <CatalogView lang={lang} products={products} categories={categories} initialQuery={q} initialAttrs={initialAttrs} />
         )}
       </div>
     </div>
