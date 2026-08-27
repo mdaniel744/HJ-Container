@@ -7,12 +7,13 @@ import PageNotFoundContent from "@/components/site/PageNotFoundContent";
 import Gallery from "@/components/product/Gallery";
 import SpecTable from "@/components/product/SpecTable";
 import PriceBlock from "@/components/product/PriceBlock";
+import VariantSelector from "@/components/product/VariantSelector";
 import DeliveryCalculator from "@/components/delivery/DeliveryCalculator";
 import ProductCard from "@/components/shop/ProductCard";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { L, pick, useLang } from "@/lib/i18n";
 import { path } from "@/lib/routes";
-import { useProduct, useProducts, useCategories } from "@/lib/useCatalog";
+import { useProduct, useProducts, useCategories, useFamilies } from "@/lib/useCatalog";
 import { STORE_ID } from "@/lib/supabase/client";
 import { fetchTranslationValue } from "@/lib/supabase/translations";
 import { PRODUCTS as LOCAL_PRODUCTS } from "@/data/products";
@@ -36,6 +37,7 @@ export default function Product() {
   const { product, isLoading } = useProduct(slug, lang);
   const { products } = useProducts(lang);
   const { categories } = useCategories(lang);
+  const { families } = useFamilies(lang);
   const { addItem } = useCart();
   const { resolve } = useAttributeVocabulary(lang);
   const [quantity, setQuantity] = useState(1);
@@ -71,6 +73,7 @@ export default function Product() {
   const images = product?.images || [];
   const imageAlts = product?.image_alts || [];
   const category = product && categories.find((c) => c.id === product.category_id);
+  const family = product?.family_id && families.find((f) => f.id === product.family_id);
   const attrs = product?.attributes || {};
   // Raw JSON keys are always source-locale, so only match the Danish key —
   // resolve() below handles translating the value for display.
@@ -81,7 +84,7 @@ export default function Product() {
     ? [
         { name: L(lang, "Forside", "Home"), path: path("home", lang) },
         { name: L(lang, "Shop", "Shop"), path: path("shop", lang) },
-        ...(category ? [{ name: category.name, path: path("category", lang, category.slug) }] : []),
+        ...(category ? [{ name: family?.name || category.name, path: path("category", lang, category.slug) }] : []),
         { name },
       ]
     : [];
@@ -160,6 +163,12 @@ export default function Product() {
           {product.short_description && <p className="mt-5 text-slate-600 leading-relaxed">{product.short_description}</p>}
 
           <div className="mt-8"><PriceBlock product={product} lang={lang} delivery={delivery} /></div>
+
+          {product.family_id && (
+            <div className="mt-8">
+              <VariantSelector product={product} products={products} families={families} resolve={resolve} lang={lang} />
+            </div>
+          )}
 
           <div className="mt-6 flex flex-wrap items-stretch gap-3">
             <div className="flex items-center border border-slate-300">

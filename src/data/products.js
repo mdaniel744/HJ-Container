@@ -1,10 +1,17 @@
 // Local sample catalogue — stands in for the shared Supabase `products` /
-// `categories` tables when NEXT_PUBLIC_STORE_ID is unset (local dev, or
-// before this store is provisioned). Shape matches what Supabase returns
-// after translation overlay: one flat row per sellable SKU, Size/Condition/
-// Colour carried as free-form `attributes`, no variant-parent grouping —
-// confirmed against Die Containers/STF Container, this platform's schema
-// has no parent_product_id or base-SKU convention.
+// `categories` / `product_families` tables when NEXT_PUBLIC_STORE_ID is
+// unset (local dev, or before this store is provisioned). Shape matches
+// what Supabase returns after translation overlay: one flat row per
+// sellable SKU, Size/Condition/Colour carried as free-form `attributes`.
+//
+// Family/variant grouping: `products.family_id` is a nullable, additive
+// link to FAMILIES below — a product with no family_id is a standalone
+// listing (no picker, exactly as every real product is today); a product
+// whose family_id matches others is one variant among siblings, and the
+// product detail page renders a picker (VariantSelector) sourced from
+// those siblings. Each variant still has its own real, unique, indexable
+// URL — the picker navigates between real product pages, it does not use
+// a `?variant=` query string.
 //
 // Fields suffixed _da/_en are a local-only authoring convenience, resolved
 // to flat fields by src/lib/localize.js before use — real Supabase rows are
@@ -66,9 +73,44 @@ export const CATEGORIES = [
   },
 ];
 
+// Shared family-level content, one row per grouped product line. Mirrors
+// the `product_families` table proposed for Supabase — a product's own
+// name/description/images still win on its own page; this is only used
+// where family-level (not variant-level) content is needed.
+export const FAMILIES = [
+  {
+    id: "fam-standard",
+    category_id: "cat-standard",
+    name_da: "Standardcontainer",
+    name_en: "Standard Container",
+    slug_da: "standardcontainer",
+    slug_en: "standard-container",
+    status: "active",
+  },
+  {
+    id: "fam-high-cube",
+    category_id: "cat-high-cube",
+    name_da: "High Cube-container",
+    name_en: "High Cube Container",
+    slug_da: "high-cube-container",
+    slug_en: "high-cube-container",
+    status: "active",
+  },
+  {
+    id: "fam-open-side",
+    category_id: "cat-open-side",
+    name_da: "Open Side-container",
+    name_en: "Open Side Container",
+    slug_da: "open-side-container",
+    slug_en: "open-side-container",
+    status: "active",
+  },
+];
+
 export const PRODUCTS = [
   {
     id: "prod-std-20-used",
+    family_id: "fam-standard",
     category_id: "cat-standard",
     name_da: "Standardcontainer 20ft, brugt",
     name_en: "Standard Container 20ft, used",
@@ -83,13 +125,16 @@ export const PRODUCTS = [
     price: 24900,
     sale_price: null,
     currency: "DKK",
+    sku: "HJC-STD-20-USED",
+    condition: "used",
+    stock_quantity: 3,
     images: [MEDIA.standard, MEDIA.hero],
     image_alts: ["Standardcontainer 20ft set udefra", "Container leveret på plads"],
     attributes: {
       Størrelse: "20ft", Stand: "Brugt", Farve: "RAL 6005 (mørkegrøn)",
       "Udvendige mål": "6058 × 2438 × 2591 mm", "Indvendige mål": "5898 × 2352 × 2385 mm",
       "Egenvægt (tara)": "2 200 kg", "Maks. nyttelast": "28 180 kg", "Indvendigt rumfang": "33.2 m³",
-      Materiale: "Corten-stål", Gulv: "Krydsfiner", SKU: "HJC-STD-20-USED",
+      Materiale: "Corten-stål", Gulv: "Krydsfiner",
     },
     badge: null,
     is_featured: true,
@@ -97,6 +142,7 @@ export const PRODUCTS = [
   },
   {
     id: "prod-std-20-new",
+    family_id: "fam-standard",
     category_id: "cat-standard",
     name_da: "Standardcontainer 20ft, ny",
     name_en: "Standard Container 20ft, new",
@@ -111,13 +157,16 @@ export const PRODUCTS = [
     price: 34900,
     sale_price: null,
     currency: "DKK",
+    sku: "HJC-STD-20-NEW",
+    condition: "new",
+    stock_quantity: 1,
     images: [MEDIA.standard],
     image_alts: ["Standardcontainer 20ft, ny"],
     attributes: {
       Størrelse: "20ft", Stand: "Ny / One Trip", Farve: "RAL 9010 (hvid)",
       "Udvendige mål": "6058 × 2438 × 2591 mm", "Indvendige mål": "5898 × 2352 × 2385 mm",
       "Egenvægt (tara)": "2 200 kg", "Maks. nyttelast": "28 180 kg", "Indvendigt rumfang": "33.2 m³",
-      Materiale: "Corten-stål", Gulv: "Krydsfiner", SKU: "HJC-STD-20-NEW",
+      Materiale: "Corten-stål", Gulv: "Krydsfiner",
     },
     badge: null,
     is_featured: false,
@@ -125,6 +174,7 @@ export const PRODUCTS = [
   },
   {
     id: "prod-std-40-used",
+    family_id: "fam-standard",
     category_id: "cat-standard",
     name_da: "Standardcontainer 40ft, brugt",
     name_en: "Standard Container 40ft, used",
@@ -137,13 +187,16 @@ export const PRODUCTS = [
     price: 32900,
     sale_price: null,
     currency: "DKK",
+    sku: "HJC-STD-40-USED",
+    condition: "used",
+    stock_quantity: 1,
     images: [MEDIA.standard],
     image_alts: ["Standardcontainer 40ft, brugt"],
     attributes: {
       Størrelse: "40ft", Stand: "Brugt", Farve: "RAL 6005 (mørkegrøn)",
       "Udvendige mål": "12192 × 2438 × 2591 mm", "Indvendige mål": "12032 × 2352 × 2385 mm",
       "Egenvægt (tara)": "3 750 kg", "Maks. nyttelast": "26 630 kg", "Indvendigt rumfang": "67.6 m³",
-      Materiale: "Corten-stål", Gulv: "Krydsfiner", SKU: "HJC-STD-40-USED",
+      Materiale: "Corten-stål", Gulv: "Krydsfiner",
     },
     badge: null,
     is_featured: false,
@@ -151,6 +204,7 @@ export const PRODUCTS = [
   },
   {
     id: "prod-hc-40-used",
+    family_id: "fam-high-cube",
     category_id: "cat-high-cube",
     name_da: "High Cube-container 40ft, brugt",
     name_en: "High Cube Container 40ft, used",
@@ -165,13 +219,16 @@ export const PRODUCTS = [
     price: 36900,
     sale_price: null,
     currency: "DKK",
+    sku: "HJC-HC-40-USED",
+    condition: "used",
+    stock_quantity: 1,
     images: [MEDIA.high_cube, MEDIA.crane],
     image_alts: ["High Cube-container 40ft", "Aflæsning med kranbil"],
     attributes: {
       Størrelse: "40ft", Stand: "Brugt", Farve: "RAL 7016 (antracitgrå)",
       "Udvendige mål": "12192 × 2438 × 2896 mm", "Indvendige mål": "12032 × 2352 × 2690 mm",
       "Egenvægt (tara)": "3 900 kg", "Maks. nyttelast": "26 480 kg", "Indvendigt rumfang": "76.0 m³",
-      Materiale: "Corten-stål", Gulv: "Krydsfiner", SKU: "HJC-HC-40-USED",
+      Materiale: "Corten-stål", Gulv: "Krydsfiner",
     },
     badge: "Populær",
     is_featured: true,
@@ -179,6 +236,7 @@ export const PRODUCTS = [
   },
   {
     id: "prod-hc-20-new",
+    family_id: "fam-high-cube",
     category_id: "cat-high-cube",
     name_da: "High Cube-container 20ft, ny",
     name_en: "High Cube Container 20ft, new",
@@ -191,13 +249,16 @@ export const PRODUCTS = [
     price: null,
     sale_price: null,
     currency: "DKK",
+    sku: "HJC-HC-20-NEW",
+    condition: "new",
+    stock_quantity: null,
     images: [MEDIA.high_cube],
     image_alts: ["High Cube-container 20ft, ny"],
     attributes: {
       Størrelse: "20ft", Stand: "Ny / One Trip", Farve: "RAL 9010 (hvid)",
       "Udvendige mål": "6058 × 2438 × 2896 mm", "Indvendige mål": "5898 × 2352 × 2690 mm",
       "Egenvægt (tara)": "2 300 kg", "Maks. nyttelast": "28 080 kg", "Indvendigt rumfang": "37.3 m³",
-      Materiale: "Corten-stål", Gulv: "Krydsfiner", SKU: "HJC-HC-20-NEW",
+      Materiale: "Corten-stål", Gulv: "Krydsfiner",
     },
     badge: null,
     is_featured: false,
@@ -205,6 +266,7 @@ export const PRODUCTS = [
   },
   {
     id: "prod-os-20-used",
+    family_id: "fam-open-side",
     category_id: "cat-open-side",
     name_da: "Open Side-container 20ft, brugt",
     name_en: "Open Side Container 20ft, used",
@@ -219,13 +281,16 @@ export const PRODUCTS = [
     price: 32900,
     sale_price: 29900,
     currency: "DKK",
+    sku: "HJC-OS-20-USED",
+    condition: "used",
+    stock_quantity: 1,
     images: [MEDIA.open_side, MEDIA.lock],
     image_alts: ["Open Side-container med åbne sidedøre", "Lås på containerdør"],
     attributes: {
       Størrelse: "20ft", Stand: "Brugt", Farve: "RAL 6005 (mørkegrøn)",
       "Udvendige mål": "6058 × 2438 × 2591 mm", "Indvendige mål": "5898 × 2352 × 2385 mm",
       "Egenvægt (tara)": "2 700 kg", "Maks. nyttelast": "27 680 kg", "Indvendigt rumfang": "33.2 m³",
-      Materiale: "Corten-stål", Gulv: "Krydsfiner", SKU: "HJC-OS-20-USED",
+      Materiale: "Corten-stål", Gulv: "Krydsfiner",
     },
     badge: "Tilbud",
     is_featured: true,
@@ -233,6 +298,7 @@ export const PRODUCTS = [
   },
   {
     id: "prod-os-40-used",
+    family_id: "fam-open-side",
     category_id: "cat-open-side",
     name_da: "Open Side-container 40ft, brugt",
     name_en: "Open Side Container 40ft, used",
@@ -245,13 +311,16 @@ export const PRODUCTS = [
     price: null,
     sale_price: null,
     currency: "DKK",
+    sku: "HJC-OS-40-USED",
+    condition: "used",
+    stock_quantity: null,
     images: [MEDIA.open_side],
     image_alts: ["Open Side-container 40ft"],
     attributes: {
       Størrelse: "40ft", Stand: "Brugt", Farve: "RAL 7016 (antracitgrå)",
       "Udvendige mål": "12192 × 2438 × 2591 mm", "Indvendige mål": "12032 × 2352 × 2385 mm",
       "Egenvægt (tara)": "4 200 kg", "Maks. nyttelast": "26 180 kg", "Indvendigt rumfang": "67.6 m³",
-      Materiale: "Corten-stål", Gulv: "Krydsfiner", SKU: "HJC-OS-40-USED",
+      Materiale: "Corten-stål", Gulv: "Krydsfiner",
     },
     badge: null,
     is_featured: false,
