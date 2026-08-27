@@ -39,7 +39,8 @@ export default function Product() {
   const { categories } = useCategories(lang);
   const { families } = useFamilies(lang);
   const { addItem } = useCart();
-  const { resolve } = useAttributeVocabulary(lang);
+  const { facetDefinitions, resolve } = useAttributeVocabulary(lang);
+  const axisKeys = facetDefinitions.map((f) => f.key);
   const [quantity, setQuantity] = useState(1);
   const [delivery, setDelivery] = useState(null);
   const [added, setAdded] = useState(false);
@@ -166,7 +167,7 @@ export default function Product() {
 
           {product.family_id && (
             <div className="mt-8">
-              <VariantSelector product={product} products={products} families={families} resolve={resolve} lang={lang} />
+              <VariantSelector product={product} products={products} families={families} axisKeys={axisKeys} resolve={resolve} lang={lang} />
             </div>
           )}
 
