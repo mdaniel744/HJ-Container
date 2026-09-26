@@ -46,8 +46,8 @@ export default function Shop() {
         <h1 className="font-heading text-3xl md:text-4xl font-extrabold">{L(lang, "Alle containere", "All containers")}</h1>
         <p className="mt-4 text-slate-600 leading-relaxed">
           {L(lang,
-            "Filtrér på containertype, størrelse, stand og pris for at finde den rette container. Bestil direkte, eller send en tilbudsforespørgsel.",
-            "Filter by container type, size, condition and price to find the right container. Order directly, or send a quote request.")}
+            "Filtrér på containertype, størrelse, stand og pris for at finde den rette container. Send en forespørgsel, når du er klar.",
+            "Filter by container type, size, condition and price to find the right container. Send an enquiry when you are ready.")}
         </p>
       </header>
 

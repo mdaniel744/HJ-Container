@@ -63,7 +63,7 @@ export default function Cart() {
             <dl className="mt-4 space-y-2 text-base leading-6 text-slate-700">
               <div className="flex justify-between"><dt>{L(lang, "Ekskl. moms", "Excl. VAT")}</dt><dd>{formatDKK(totalExclVat, lang)}</dd></div>
               <div className="flex justify-between"><dt>{L(lang, "Moms (25%)", "VAT (25%)")}</dt><dd>{formatDKK(vatAmount, lang)}</dd></div>
-              <div className="flex justify-between"><dt>{L(lang, "Levering", "Delivery")}</dt><dd>{L(lang, "beregnes i kassen", "calculated at checkout")}</dd></div>
+              <div className="flex justify-between"><dt>{L(lang, "Levering", "Delivery")}</dt><dd>{L(lang, "bekræftes særskilt", "confirmed separately")}</dd></div>
               <div className="flex justify-between pt-2 border-t border-slate-200 text-slate-900 font-semibold">
                 <dt>{L(lang, "Varer i alt inkl. moms", "Items total incl. VAT")}</dt><dd>{formatDKK(totalInclVat, lang)}</dd>
               </div>

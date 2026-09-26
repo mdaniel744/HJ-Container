@@ -29,8 +29,6 @@ export const COLLECTIONS = [
   { key: "open_side", kind: "type", slug: { da: "open-side-containere", en: "open-side-containers" }, label: { da: "Open Side-containere", en: "Open Side Containers" } },
   { key: "storage", kind: "type", slug: { da: "opbevaringscontainere", en: "storage-containers" }, label: { da: "Opbevaringscontainere", en: "Storage Containers" } },
   { key: "office", kind: "type", slug: { da: "kontorcontainere", en: "office-containers" }, label: { da: "Kontorcontainere", en: "Office Containers" } },
-  { key: "insulated", kind: "type", slug: { da: "isolerede-containere", en: "insulated-containers" }, label: { da: "Isolerede containere", en: "Insulated Containers" } },
-  { key: "tunnel", kind: "type", slug: { da: "tunnelcontainere", en: "tunnel-containers" }, label: { da: "Tunnelcontainere", en: "Tunnel Containers" } },
   { key: "10ft", kind: "size", slug: { da: "10-fods-containere", en: "10ft-containers" }, label: { da: "10 fods containere", en: "10ft Containers" } },
   { key: "20ft", kind: "size", slug: { da: "20-fods-containere", en: "20ft-containers" }, label: { da: "20 fods containere", en: "20ft Containers" } },
   { key: "40ft", kind: "size", slug: { da: "40-fods-containere", en: "40ft-containers" }, label: { da: "40 fods containere", en: "40ft Containers" } },
@@ -46,8 +44,6 @@ export const CATEGORY_LABEL = {
   open_side: { da: "Open Side-container", en: "Open Side Container" },
   storage: { da: "Opbevaringscontainer", en: "Storage Container" },
   office: { da: "Kontorcontainer", en: "Office Container" },
-  insulated: { da: "Isoleret container", en: "Insulated Container" },
-  tunnel: { da: "Tunnelcontainer", en: "Tunnel Container" },
 };
 
 // Compatibility exports used by the shared header, footer and size cards.

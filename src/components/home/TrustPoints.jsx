@@ -7,7 +7,7 @@ const POINTS = [
   { icon: PackageCheck, da: ["Nye og brugte muligheder", "Vælg mellem One Trip-containere og brugte enheder."], en: ["New and used options", "Choose between One Trip containers and used units."] },
   { icon: Truck, da: ["Fleksibel levering", "Transport planlægges efter adgangsforhold og aflæsningsmetode."], en: ["Flexible delivery", "Transport is planned around site access and unloading method."] },
   { icon: MessageSquareQuote, da: ["Personlig tilbudsbehandling", "Særlige opgaver og flere containere håndteres manuelt."], en: ["Personal quote handling", "Special jobs and multiple containers are handled manually."] },
-  { icon: ShieldCheck, da: ["Sikker ordreproces", "Fuldt prisoverblik og vilkår før du bekræfter ordren."], en: ["Secure ordering process", "Full price overview and terms before you confirm the order."] },
+  { icon: ShieldCheck, da: ["Gennemsigtigt prisoverblik", "Varepris og moms vises tydeligt; fragt og aflæsning bekræftes særskilt."], en: ["Transparent pricing", "Product price and VAT are clear; delivery and unloading are confirmed separately."] },
 ];
 
 export default function TrustPoints({ lang }) {

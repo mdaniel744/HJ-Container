@@ -2,11 +2,12 @@ import { getComplianceBlockers } from "@/lib/compliance";
 import { buildFeedXml, feedRow, validateVariant } from "@/lib/merchant";
 import { DEMO_PRODUCTS, DEMO_VARIANTS } from "@/data/demoCatalog";
 import { SETTINGS } from "@/data/content";
+import { isListedContainerProduct } from "@/lib/containerTypes";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request) {
-  const products = DEMO_PRODUCTS;
+  const products = DEMO_PRODUCTS.filter(isListedContainerProduct);
   const variants = DEMO_VARIANTS;
   const settings = SETTINGS;
   const blockers = getComplianceBlockers(settings);
@@ -22,7 +23,7 @@ export async function GET(request) {
   const rows = variants
     .filter((variant) => !(variant.size === "10ft" && variant.product_key === "open_side"))
     .map((variant) => ({ variant, product: products.find((product) => product.key === variant.product_key) }))
-    .filter(({ variant, product }) => variant.merchant_include && validateVariant(variant, product).length === 0)
+    .filter(({ variant, product }) => product && variant.merchant_include && validateVariant(variant, product).length === 0)
     .map(({ variant, product }) => feedRow(variant, product, origin, settings));
 
   return new Response(buildFeedXml(rows, origin), {

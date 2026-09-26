@@ -7,8 +7,8 @@ import { MEDIA } from "@/lib/media";
 
 export default function DeliverySection({ lang, deliveryPolicySlug }) {
   const factors = lang === "en"
-    ? ["Delivery postcode", "Number of containers", "Container dimensions", "Vehicle access", "Unloading method", "Ground conditions"]
-    : ["Leveringspostnummer", "Antal containere", "Containerens mål", "Adgang for lastbil", "Aflæsningsmetode", "Underlagets bæreevne"];
+    ? ["Tell us where it should go", "Add access notes if needed", "Choose unloading if known", "Receive a delivery confirmation"]
+    : ["Oplys leveringssted", "Tilføj adgangsforhold ved behov", "Vælg aflæsning, hvis du ved det", "Modtag bekræftelse på levering"];
 
   return (
     <section className="mx-auto max-w-7xl px-5 py-20 grid gap-12 lg:grid-cols-2 items-center">
@@ -20,8 +20,8 @@ export default function DeliverySection({ lang, deliveryPolicySlug }) {
         <h2 className="mt-3 font-heading text-2xl md:text-3xl font-extrabold">{L(lang, "Levering og aflæsning", "Delivery and unloading")}</h2>
         <p className="mt-4 text-slate-600 leading-relaxed">
           {L(lang,
-            "Til direkte ordrer beregnes fragten ud fra leveringssted, antal, containerens mål og aflæsningsmetode. Hvis adgang eller underlag kræver særlig planlægning, giver vi i stedet et individuelt tilbud.",
-            "For direct orders, shipping is calculated from the delivery location, quantity, container dimensions and unloading method. If access or ground conditions require special planning, we provide an individual quotation instead.")}
+            "Fortæl os, hvor containeren skal leveres. Vi gennemgår adgangsforholdene og bekræfter fragt og aflæsning særskilt — uden en lang beregning i kassen.",
+            "Tell us where the container should go. We review the access requirements and confirm delivery and unloading separately — without a lengthy checkout calculation.")}
         </p>
         <ul className="mt-6 grid gap-2 sm:grid-cols-2">
           {factors.map((f) => (

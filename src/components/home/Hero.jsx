@@ -23,8 +23,8 @@ export default function Hero({ lang }) {
           </h1>
           <p className="mt-5 text-slate-600 text-base md:text-lg leading-relaxed">
             {L(lang,
-              "Køb Standard-, High Cube- og Open Side-containere online, eller få en skræddersyet opbevarings-, kontor- eller ombygningsløsning.",
-              "Buy Standard, High Cube and Open Side containers online, or request a tailored storage, office or converted container solution.")}
+              "Udforsk Standard-, High Cube- og Open Side-containere, eller få en skræddersyet opbevarings-, kontor- eller ombygningsløsning.",
+              "Explore Standard, High Cube and Open Side containers, or request a tailored storage, office or converted container solution.")}
           </p>
           <div className="mt-8 flex flex-col sm:flex-row gap-3">
             <Link to={path("shop", lang)} className="inline-flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-semibold px-7 py-4 transition-colors">

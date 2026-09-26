@@ -30,8 +30,8 @@ export default function Home() {
       "Køb nye og brugte containere i Danmark | HJ Container ApS",
       "Buy new and used shipping containers in Denmark | HJ Container ApS"),
     description: L(lang,
-      "Køb Standard-, High Cube- og Open Side-containere online, eller få tilbud på opbevarings-, kontor-, isolerede og ombyggede containerløsninger.",
-      "Buy Standard, High Cube and Open Side containers online, or request a quote for storage, office, insulated and converted container solutions."),
+      "Udforsk Standard-, High Cube- og Open Side-containere, eller få tilbud på opbevarings-, kontor- og ombyggede containerløsninger.",
+      "Explore Standard, High Cube and Open Side containers, or request a quote for storage, office and converted container solutions."),
     daPath: "/", enPath: "/en",
     jsonLd: [
       organizationJsonLd(),

@@ -6,17 +6,26 @@ import { getCategories as getSupabaseCategories, getCategoryBySlug as getSupabas
 import { getFamilies as getSupabaseFamilies } from "@/lib/supabase/families";
 import { PRODUCTS, CATEGORIES, FAMILIES } from "@/data/products";
 import { localizeRow } from "@/lib/localize";
+import { isListedContainerCategory, isListedContainerProduct } from "@/lib/containerTypes";
 
 const PRODUCT_FIELDS = ["name", "slug", "short_description", "description"];
 const CATEGORY_FIELDS = ["name", "slug", "description", "meta_title", "meta_description"];
 const FAMILY_FIELDS = ["name", "slug"];
 
+function localCategories(locale) {
+  return CATEGORIES.map((c) => localizeRow(c, locale, CATEGORY_FIELDS));
+}
+
 function localProducts(locale) {
   return PRODUCTS.map((p) => localizeRow(p, locale, PRODUCT_FIELDS));
 }
 
-function localCategories(locale) {
-  return CATEGORIES.map((c) => localizeRow(c, locale, CATEGORY_FIELDS));
+async function listedProducts(locale) {
+  const [products, categories] = STORE_ID
+    ? await Promise.all([getSupabaseProducts(locale), getSupabaseCategories(locale)])
+    : [localProducts(locale), localCategories(locale)];
+  const unlistedIds = new Set(categories.filter((category) => !isListedContainerCategory(category)).map((category) => category.id));
+  return products.filter((product) => isListedContainerProduct(product, unlistedIds));
 }
 
 function localFamilies(locale) {
@@ -30,7 +39,7 @@ function localFamilies(locale) {
 export function useProducts(locale = "da") {
   const query = useQuery({
     queryKey: ["products", STORE_ID, locale],
-    queryFn: () => (STORE_ID ? getSupabaseProducts(locale) : Promise.resolve(localProducts(locale))),
+    queryFn: () => listedProducts(locale),
   });
   return { products: query.data || [], isLoading: query.isLoading };
 }
@@ -50,7 +59,7 @@ export function useProduct(slug, locale = "da") {
 export function useCategories(locale = "da") {
   const query = useQuery({
     queryKey: ["categories", STORE_ID, locale],
-    queryFn: () => (STORE_ID ? getSupabaseCategories(locale) : Promise.resolve(localCategories(locale))),
+    queryFn: async () => (STORE_ID ? await getSupabaseCategories(locale) : localCategories(locale)).filter(isListedContainerCategory),
   });
   return { categories: query.data || [], isLoading: query.isLoading };
 }
@@ -58,10 +67,13 @@ export function useCategories(locale = "da") {
 export function useCategory(slug, locale = "da") {
   const query = useQuery({
     queryKey: ["category", STORE_ID, slug, locale],
-    queryFn: () =>
-      STORE_ID
+    queryFn: async () => {
+      const category = STORE_ID
         ? getSupabaseCategoryBySlug(slug, locale)
-        : Promise.resolve(localCategories(locale).find((c) => c.slug === slug) || null),
+        : localCategories(locale).find((c) => c.slug === slug) || null;
+      const resolved = await category;
+      return resolved && isListedContainerCategory(resolved) ? resolved : null;
+    },
     enabled: !!slug,
   });
   return { category: query.data || null, isLoading: query.isLoading };
