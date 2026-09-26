@@ -11,6 +11,9 @@ export const metadata = {
     template: "%s | HJ Container ApS",
   },
   description,
+  verification: {
+    google: "1GA4awH6d6Hieu6crqNDUpm80GBW3EvaMvYwd6-XMwk",
+  },
   openGraph: {
     type: "website",
     siteName: "HJ Container ApS",
