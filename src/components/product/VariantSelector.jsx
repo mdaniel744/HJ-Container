@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useNavigate } from "@/lib/next-router";
 import { CONDITION_LABEL, L } from "@/lib/i18n";
 import { path } from "@/lib/routes";
@@ -14,6 +15,16 @@ const RAL_SWATCHES = {
   "RAL 7016": "#383e42",
   "RAL 5010": "#0e294b",
 };
+const preloadedImages = new Map();
+
+function preloadImage(src) {
+  if (!src || preloadedImages.has(src)) return;
+  const image = new window.Image();
+  image.decoding = "async";
+  image.src = src;
+  preloadedImages.set(src, image);
+  if (preloadedImages.size > 24) preloadedImages.delete(preloadedImages.keys().next().value);
+}
 
 function swatchColor(colorValue) {
   const ral = colorValue?.match(/RAL\s?\d{4}/i)?.[0]?.toUpperCase().replace(/\s+/, " ");
@@ -71,6 +82,7 @@ function valueLabelFor(key, value, resolve, lang) {
  */
 export default function VariantSelector({ product, products, families, axisKeys, resolve, lang }) {
   const navigate = useNavigate();
+  const router = useRouter();
   const familyMembers = products.filter((p) => p.family_id === product.family_id);
   const myValues = axisValues(product);
 
@@ -132,6 +144,31 @@ export default function VariantSelector({ product, products, families, axisKeys,
       return { familyId, label: family?.name || best.name, target: best };
     })
     .sort((a, b) => a.label.localeCompare(b.label));
+
+  // Warm only choices the shopper can select from this state. Product rows
+  // are already in the catalogue cache; prefetching their Next routes avoids
+  // a route-loading pause, while a small image budget keeps background work
+  // reasonable on mobile connections.
+  const visibleTargets = [
+    ...typeOptions.map((option) => option.target),
+    ...variableKeys.flatMap((key) => optionsFor(key).map(([, sibling]) => sibling)),
+  ].filter((target) => target.id !== product.id);
+  const uniqueTargets = [...new Map(visibleTargets.map((target) => [target.id, target])).values()];
+  const routeSignature = uniqueTargets.map((target) => path("product", lang, target.slug)).join("\n");
+  const imageSignature = [...new Set(uniqueTargets.map((target) => target.images?.[0]).filter(Boolean))].slice(0, 4).join("\n");
+
+  useEffect(() => {
+    if (!routeSignature) return;
+    routeSignature.split("\n").forEach((href) => router.prefetch(href));
+  }, [router, routeSignature]);
+
+  useEffect(() => {
+    if (!imageSignature || window.navigator.connection?.saveData) return;
+    const timer = window.setTimeout(() => {
+      imageSignature.split("\n").forEach(preloadImage);
+    }, 200);
+    return () => window.clearTimeout(timer);
+  }, [imageSignature]);
 
   return (
     <div className="space-y-6">

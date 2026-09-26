@@ -14,7 +14,7 @@ export default function Gallery({ images, imageAlts, alt, lang }) {
   return (
     <div>
       <div className="relative border border-slate-200 bg-slate-50 overflow-hidden group">
-        <Image src={list[active]} alt={imageAlts?.[active] || alt} className="w-full aspect-[4/3] transition-transform duration-500 group-hover:scale-[1.08]" />
+        <Image src={list[active]} alt={imageAlts?.[active] || alt} loading="eager" fetchPriority="high" className="w-full aspect-[4/3] transition-transform duration-500 group-hover:scale-[1.08]" />
         <button
           onClick={() => setFull(true)}
           className="absolute bottom-3 right-3 bg-white/95 border border-slate-200 p-2 text-slate-700"
