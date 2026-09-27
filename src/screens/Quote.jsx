@@ -1,26 +1,53 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "@/lib/next-router";
 import { AlertTriangle, CheckCircle2, Plus, Trash2, Upload } from "lucide-react";
 import Breadcrumbs from "@/components/site/Breadcrumbs";
 import StepBar from "@/components/checkout/StepBar";
-import { CONDITION_LABEL, L, pick, useLang } from "@/lib/i18n";
+import { CONDITION_LABEL, L, useLang } from "@/lib/i18n";
 import { path } from "@/lib/routes";
 import { UNLOADING_OPTIONS } from "@/lib/delivery";
-import { useProducts } from "@/lib/useCatalog";
+import { useCategories, useProducts } from "@/lib/useCatalog";
+import { CONTAINER_TYPES } from "@/lib/containerTypes";
+import { findAttribute } from "@/lib/localize";
 import { useSeo } from "@/lib/seo";
 import { COMPANY } from "@/lib/company";
 import { STORE_ID } from "@/lib/supabase/client";
 import { createInquiry } from "@/lib/supabase/inquiries";
 
 const FIELD = "w-full border border-slate-400 px-3 py-3 text-base text-slate-900 placeholder:text-slate-500 bg-white";
+const SIZE_KEYS = ["Størrelse", "Size"];
+const COLOR_KEYS = ["Farve", "Colour", "Color"];
+
+function typeKeyForCategory(category) {
+  const label = `${category?.slug || ""} ${category?.name || ""}`.toLowerCase();
+  if (/high.?cube/.test(label)) return "high_cube";
+  if (/open.?side/.test(label)) return "open_side";
+  if (/standard/.test(label)) return "standard";
+  if (/storage|opbevaring/.test(label)) return "storage";
+  if (/office|kontor/.test(label)) return "office";
+  return null;
+}
+
+function newLine(patch = {}) {
+  return { type_key: "", product_id: null, size: "20ft", condition: "used", color: "", quantity: 1, ...patch };
+}
 
 export default function Quote() {
   const lang = useLang();
   const { products } = useProducts(lang);
+  const { categories, isLoading: categoriesLoading } = useCategories(lang);
   const [params] = useSearchParams();
+  const requestedProductId = params.get("product") || "";
+  const requestedType = params.get("type") || "";
+  const seededProductId = useRef("");
   const [step, setStep] = useState(0);
   const [lines, setLines] = useState([
-    { product_key: params.get("product") || "", size: params.get("size") || "20ft", condition: params.get("condition") || "used", color: "", quantity: 1 },
+    newLine({
+      type_key: CONTAINER_TYPES.some((type) => type.key === requestedType) ? requestedType : "",
+      product_id: requestedProductId || null,
+      size: params.get("size") || (requestedType && !["standard", "high_cube", "open_side"].includes(requestedType) ? "" : "20ft"),
+      condition: params.get("condition") || "used",
+    }),
   ]);
   const [form, setForm] = useState({
     address: "", postcode: "", city: "", country: "Danmark", site_access: "", ground_condition: "",
@@ -33,6 +60,33 @@ export default function Quote() {
 
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
   const setLine = (i, patch) => setLines((l) => l.map((x, idx) => (idx === i ? { ...x, ...patch } : x)));
+
+  const familyOptions = [
+    ...CONTAINER_TYPES.map((type) => ({ value: type.key, label: type.label[lang] })),
+    ...categories
+      .filter((category) => !typeKeyForCategory(category))
+      .map((category) => ({ value: `category:${category.id}`, label: category.name })),
+  ];
+  const requestedProduct = products.find((product) => product.id === requestedProductId);
+
+  useEffect(() => {
+    if (!requestedProduct || categoriesLoading || seededProductId.current === requestedProductId) return;
+    seededProductId.current = requestedProductId;
+    const category = categories.find((item) => item.id === requestedProduct.category_id);
+    const typeKey = typeKeyForCategory(category) || (category ? `category:${category.id}` : `product:${requestedProduct.id}`);
+    setLines((current) => current.map((line, index) => {
+      if (index !== 0) return line;
+      if (line.type_key && line.type_key !== typeKey) return { ...line, product_id: null };
+      return {
+        ...line,
+        type_key: typeKey,
+        product_id: requestedProduct.id,
+        size: params.get("size") || findAttribute(requestedProduct.attributes, SIZE_KEYS) || line.size,
+        condition: params.get("condition") || requestedProduct.condition || line.condition,
+        color: findAttribute(requestedProduct.attributes, COLOR_KEYS) || line.color,
+      };
+    }));
+  }, [categories, categoriesLoading, params, requestedProduct, requestedProductId]);
 
   useSeo({
     lang,
@@ -54,16 +108,38 @@ export default function Quote() {
   };
 
   const valid = () => {
-    if (step === 0) return lines.every((l) => l.product_key && l.quantity > 0);
+    if (step === 0) return lines.every((l) => l.type_key && Number.isFinite(l.quantity) && l.quantity > 0);
     if (step === 1) return form.country && form.postcode && form.city && form.unloading_method;
     if (step === 2) return form.full_name && form.email.includes("@") && form.phone;
     return true;
   };
 
   const lineSummary = (l) => {
-    const name = pick(products.find((product) => product.key === l.product_key) || {}, "name", lang);
-    return `${l.quantity} × ${name} — ${l.size}, ${CONDITION_LABEL[l.condition][lang]}${l.color ? `, ${l.color}` : ""}`;
+    const linkedProduct = products.find((product) => product.id === l.product_id);
+    const typeName = familyOptions.find((option) => option.value === l.type_key)?.label || linkedProduct?.name || l.type_key;
+    const productName = linkedProduct ? ` (${linkedProduct.name}${linkedProduct.sku ? `, SKU ${linkedProduct.sku}` : ""})` : "";
+    const details = [l.size, CONDITION_LABEL[l.condition]?.[lang], l.color].filter(Boolean).join(", ");
+    return `${l.quantity} × ${typeName}${productName}${details ? ` — ${details}` : ""}`;
   };
+
+  const requestBody = [
+    L(lang, "Jeg vil gerne have et ikke-bindende tilbud på:", "I would like a non-binding quote for:"),
+    ...lines.map(lineSummary),
+    "",
+    `${L(lang, "Leveringssted", "Delivery location")}: ${[form.address, form.postcode, form.city, form.country].filter(Boolean).join(", ")}`,
+    `${L(lang, "Aflæsning", "Unloading")}: ${form.unloading_method}`,
+    ...(form.site_access ? [`${L(lang, "Adgangsforhold", "Site access")}: ${form.site_access}`] : []),
+    ...(form.ground_condition ? [`${L(lang, "Underlag", "Ground condition")}: ${form.ground_condition}`] : []),
+    ...(form.delivery_period ? [`${L(lang, "Ønsket leveringsperiode", "Desired delivery period")}: ${form.delivery_period}`] : []),
+    "",
+    `${L(lang, "Navn", "Name")}: ${form.full_name}`,
+    ...(form.company_name ? [`${L(lang, "Firma", "Company")}: ${form.company_name}${form.cvr ? ` (CVR ${form.cvr})` : ""}`] : []),
+    `${L(lang, "E-mail", "Email")}: ${form.email}`,
+    `${L(lang, "Telefon", "Telephone")}: ${form.phone}`,
+    ...(form.notes ? ["", `${L(lang, "Bemærkninger", "Notes")}: ${form.notes}`] : []),
+    ...(form.attachments.length ? ["", L(lang, "Vedhæft venligst de valgte filer til e-mailen:", "Please attach these selected files to the email:"), ...form.attachments] : []),
+  ].join("\n");
+  const requestMailto = `mailto:${COMPANY.email}?subject=${encodeURIComponent(L(lang, "Tilbudsforespørgsel fra hjemmesiden", "Quote request from website"))}&body=${encodeURIComponent(requestBody)}`;
 
   const submit = async () => {
     setError("");
@@ -75,13 +151,13 @@ export default function Quote() {
     setSubmitting(true);
     try {
       await createInquiry({
-        productId: null,
+        productId: lines.length === 1 ? lines[0].product_id : null,
         name: form.full_name,
         email: form.email,
         phone: form.phone,
         message: [
           ...lines.map(lineSummary),
-          `${L(lang, "Leveringssted", "Delivery location")}: ${form.address} ${form.postcode} ${form.city}`,
+          `${L(lang, "Leveringssted", "Delivery location")}: ${[form.address, form.postcode, form.city, form.country].filter(Boolean).join(", ")}`,
           `${L(lang, "Aflæsning", "Unloading")}: ${form.unloading_method}`,
           form.notes,
         ].filter(Boolean).join("\n"),
@@ -139,35 +215,41 @@ export default function Quote() {
             {lines.map((l, i) => (
               <div key={i} className="border border-slate-200 p-5 grid gap-4 sm:grid-cols-2">
                 <label className="text-sm sm:col-span-2"><span className="hjc-label block mb-1.5">{L(lang, "Containertype", "Container family")} *</span>
-                  <select className={FIELD} value={l.product_key} onChange={(e) => {
-                    const product = products.find((candidate) => candidate.key === e.target.value);
+                  <select className={FIELD} value={l.type_key} onChange={(e) => {
+                    const typeKey = e.target.value;
                     setLine(i, {
-                      product_key: e.target.value,
-                      ...(product?.catalog_mode === "standalone" ? { size: product.size || "20ft" } : {}),
-                      ...(product?.category === "open_side" && l.size === "10ft" ? { size: "20ft" } : {}),
+                      type_key: typeKey,
+                      product_id: null,
+                      size: ["standard", "high_cube", "open_side"].includes(typeKey)
+                        ? (typeKey === "open_side" && l.size === "10ft" ? "20ft" : l.size || "20ft")
+                        : "",
                     });
                   }}>
                     <option value="">{L(lang, "Vælg", "Select")}</option>
-                    {products.map((product) => <option key={product.key} value={product.key}>{pick(product, "name", lang)}</option>)}
+                    {familyOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                    {l.type_key.startsWith("product:") && (
+                      <option value={l.type_key}>{products.find((product) => `product:${product.id}` === l.type_key)?.name || L(lang, "Valgt container", "Selected container")}</option>
+                    )}
                   </select>
                 </label>
                 <label className="text-sm"><span className="hjc-label block mb-1.5">{L(lang, "Størrelse", "Size")}</span>
-                  <select className={FIELD} value={l.size} onChange={(e) => setLine(i, { size: e.target.value })}>
-                    {(products.find((product) => product.key === l.product_key)?.catalog_mode === "standalone"
-                      ? [products.find((product) => product.key === l.product_key)?.size || "20ft"]
-                      : products.find((product) => product.key === l.product_key)?.category === "open_side"
-                        ? ["20ft", "40ft"]
-                        : ["10ft", "20ft", "40ft"]).map((s) => <option key={s} value={s}>{s}</option>)}
-                  </select>
+                  {["standard", "high_cube", "open_side"].includes(l.type_key) ? (
+                    <select className={FIELD} value={l.size} onChange={(e) => setLine(i, { size: e.target.value, product_id: null })}>
+                      {(l.type_key === "open_side" ? ["20ft", "40ft"] : ["10ft", "20ft", "40ft"]).map((size) => <option key={size} value={size}>{size}</option>)}
+                    </select>
+                  ) : (
+                    <input className={FIELD} value={l.size} onChange={(e) => setLine(i, { size: e.target.value, product_id: null })}
+                      placeholder={L(lang, "Skriv ønsket størrelse", "Enter preferred size")} />
+                  )}
                 </label>
                 <label className="text-sm"><span className="hjc-label block mb-1.5">{L(lang, "Stand", "Condition")}</span>
-                  <select className={FIELD} value={l.condition} onChange={(e) => setLine(i, { condition: e.target.value })}>
+                  <select className={FIELD} value={l.condition} onChange={(e) => setLine(i, { condition: e.target.value, product_id: null })}>
                     <option value="new">{CONDITION_LABEL.new[lang]}</option>
                     <option value="used">{CONDITION_LABEL.used[lang]}</option>
                   </select>
                 </label>
                 <label className="text-sm"><span className="hjc-label block mb-1.5">{L(lang, "Ønsket farve (valgfrit)", "Preferred colour (optional)")}</span>
-                  <input className={FIELD} value={l.color} onChange={(e) => setLine(i, { color: e.target.value })} /></label>
+                  <input className={FIELD} value={l.color} onChange={(e) => setLine(i, { color: e.target.value, product_id: null })} /></label>
                 <label className="text-sm"><span className="hjc-label block mb-1.5">{L(lang, "Antal", "Quantity")}</span>
                   <input type="number" min="1" className={FIELD} value={l.quantity} onChange={(e) => setLine(i, { quantity: Number(e.target.value) })} /></label>
                 {lines.length > 1 && (
@@ -178,7 +260,7 @@ export default function Quote() {
                 )}
               </div>
             ))}
-            <button onClick={() => setLines([...lines, { product_key: "", size: "20ft", condition: "used", color: "", quantity: 1 }])}
+            <button onClick={() => setLines([...lines, newLine()])}
               className="inline-flex items-center gap-2 border border-slate-900 px-5 py-3 text-sm font-semibold">
               <Plus className="w-4 h-4" /> {L(lang, "Tilføj en container mere", "Add another container")}
             </button>
@@ -238,6 +320,10 @@ export default function Quote() {
               {L(lang, "Billeder af placering, adgangsvej og underlag hjælper os med at planlægge transporten korrekt.",
                 "Photos of the placement area, access road and ground help us plan the transport correctly.")}
             </p>
+            <p className="mt-2 text-sm text-slate-600">
+              {L(lang, "Filer uploades ikke af formularen. Send dem separat til vores e-mail, eller vedhæft dem til e-mailudkastet.",
+                "Files are not uploaded by this form. Send them separately by email, or attach them to the email draft.")}
+            </p>
             <label className="mt-4 inline-flex items-center gap-2 border border-slate-900 px-5 py-3 text-sm font-semibold cursor-pointer">
               <Upload className="w-4 h-4" /> {L(lang, "Vælg filer", "Choose files")}
               <input type="file" multiple accept="image/*,.pdf" className="sr-only" onChange={upload} />
@@ -268,16 +354,30 @@ export default function Quote() {
             {!STORE_ID && (
               <p className="mt-4 flex items-start gap-2 text-sm text-slate-600 border-l-2 border-orange-500 pl-3">
                 <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-orange-500" />
-                {L(lang, "Tilbudsforespørgsler tages ikke imod endnu. Skriv i stedet til ",
-                  "Quote requests aren't being accepted yet. Please email ")}
-                <a href={`mailto:${COMPANY.email}`} className="underline">{COMPANY.email}</a>.
+                {L(lang, "Vi åbner et e-mailudkast med dine oplysninger. Gennemgå det, vedhæft eventuelle filer, og send det for at fuldføre forespørgslen.",
+                  "We will open an email draft with your details. Review it, attach any files, and send it to complete the request.")}
               </p>
             )}
             {error && <p role="alert" className="mt-4 text-sm text-red-700">{error}</p>}
-            <button onClick={submit} disabled={!STORE_ID || submitting}
-              className="mt-6 w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-semibold py-4">
-              {submitting ? L(lang, "Sender…", "Sending…") : L(lang, "Send tilbudsforespørgsel", "Submit Quote Request")}
-            </button>
+            {STORE_ID ? (
+              <button onClick={submit} disabled={submitting}
+                className="mt-6 w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-semibold py-4">
+                {submitting ? L(lang, "Sender…", "Sending…") : L(lang, "Send tilbudsforespørgsel", "Submit Quote Request")}
+              </button>
+            ) : (
+              <>
+                <a href={requestMailto} className="mt-6 block w-full bg-orange-500 px-5 py-4 text-center font-semibold text-white hover:bg-orange-600">
+                  {L(lang, "Åbn e-mailudkast", "Open email draft")}
+                </a>
+                <details className="mt-4 border border-slate-200 p-4 text-sm">
+                  <summary className="cursor-pointer font-semibold text-slate-800">
+                    {L(lang, "Intet e-mailprogram? Kopiér forespørgslen her", "No email app? Copy the request here")}
+                  </summary>
+                  <p className="mt-3 text-slate-600">{L(lang, "Send teksten til", "Send the text to")} <a className="underline" href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>.</p>
+                  <textarea readOnly value={requestBody} rows={10} className={`${FIELD} mt-3`} aria-label={L(lang, "Forespørgselstekst", "Quote request text")} />
+                </details>
+              </>
+            )}
           </section>
         )}
       </div>
